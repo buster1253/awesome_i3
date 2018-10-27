@@ -29,7 +29,8 @@ local has_fdo, freedesktop = pcall(require, "freedesktop")
 --local mymenu = require "menu-config"
 --mymenu:init({ env = env })
 
-
+-- I3 tag handler
+local tags = require "tags"
 
 
 -- {{{ Error handling
@@ -225,10 +226,11 @@ awful.screen.connect_for_each_screen(function(s)
     -- Wallpaper
     set_wallpaper(s)
 
-	awful.tag({s.index}, s, awful.layout.layouts[1])
+	tags.add_tag(s)
+	--awful.tag({s.index}, s, awful.layout.layouts[1])
 
 	-- add tag to the tag list
-	tag_list[s.index] = s.tags[1]
+	--tag_list[s.index] = s.tags[1]
     -- Each screen has its own tag table.
     --awful.tag({ "gen", "dev", "web", "4", "5", "6", "7", "8", "9" }, 
 			--s, awful.layout.layouts[1])
@@ -319,6 +321,8 @@ local spotify = {
 	--local c = change * step
 	--os.execute("echo " .. tostring(c) .. " > " .. backlight_path.."brightness")
 --end
+
+
 
 -- {{{ Key bindings
 globalkeys = gears.table.join(
@@ -529,13 +533,6 @@ clientkeys = gears.table.join(
         {description = "(un)maximize horizontally", group = "client"})
 )
 
-local function table_length(t) 
-	local c = 0
-	for _ in pairs(t) do
-		if _ then c = c +1 end
-	end
-	return c
-end
 --
 -- Bind all key numbers to tags.
 -- Be careful: we use keycodes to make it work on any keyboard layout.
@@ -543,34 +540,9 @@ end
 for i = 1, 9 do
 	globalkeys = gears.table.join(globalkeys,
         -- View tag only.
-		awful.key({ modkey }, "#" .. i + 9,
-			function ()
-				-- get the globally uniqe tag:
-				local tag = tag_list[i]
-				if tag and tag.activated then -- move to tag & screen
-					local curr_screen = awful.screen.focused()
-					local curr_tag = curr_screen.selected_tag
-					local new_screen = awful.tag.getscreen(tag)
-					awful.screen.focus(new_screen)
-					tag:view_only()
-					-- don't remove the tag if it's the only one remove
-					if #curr_screen.tags > 1 and table_length(curr_tag:clients()) < 1 then
-						curr_tag:delete()
-					end
-				else  -- create the tag and move to current screen
-					local s = awful.screen.focused()
-					local t = awful.tag.add(i,{screen=s, layout=awful.layout.layouts[1]})
-					awful.tag.setlayout(awful.layout.layouts[1], t)
-					-- force tags to be sorted only works for numeric names
-					for ti,tag in ipairs(s.tags) do
-						if tonumber(tag.name) > i then
-							awful.tag.move(ti, t)
-						end
-					end
-					tag_list[i] = t
-					t:view_only()
-				end
-			end,
+		-- TODO figure out how to enable tag 0 ~ 10
+		awful.key({ modkey }, "#" .. i + 9, 
+			function() tags.view_tag(i) end,
 			{description = "view tag #"..i, group = "tag"}),
         -- Toggle tag display.
         awful.key({ modkey, "Control" }, "#" .. i + 9,
@@ -584,35 +556,7 @@ for i = 1, 9 do
 			{description = "toggle tag #" .. i, group = "tag"}),
         -- Move client to tag.
         awful.key({ modkey, "Shift" }, "#" .. i + 9,
-			function ()
-				if client.focus then
-					local tag = tag_list[i]
-					local c = client.focus
-					local curr_screen = awful.screen.focused()
-					local curr_tag = curr_screen.selected_tag
-					if tag and tag.activated then -- move client to tag
-						c:move_to_screen(awful.tag.getscreen(tag))
-						c:move_to_tag(tag)
-						awful.screen.focus(awful.tag.getscreen(tag))
-						tag:view_only()
-					else -- create tag and move client
-						local s = awful.screen.focused()
-						local t = awful.tag.add(i,{screen=s})
-						tag_list[i] = t
-						c:move_to_tag(t)
-						t:view_only()
-					end
-					-- remove tag if no clients
-					if table_length(curr_tag:clients()) < 1 then
-						curr_tag:delete()
-					end
-					-- whats screen is the tag on?
-					--local tag = client.focus.screen.tags[i]
-					--if tag then
-						--client.focus:move_to_tag(tag)
-					--end
-				end
-			end,
+			function() tags.move_client_to_tag(i) end,
 			{description = "move focused client to tag #"..i, group = "tag"}),
         -- Toggle tag on focused client.
         awful.key({ modkey, "Control", "Shift" }, "#" .. i + 9,
