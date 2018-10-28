@@ -2,7 +2,7 @@ local awful = require "awful"
 local gears = require "gears"
 local tags = require "tags"
 local nau = require "naughty"
-
+local wibox = require "wibox"
 
 
 local _M = {}
@@ -23,20 +23,11 @@ local function table_length(t)
 end
 
 function _M.init()
-	local ws = {}
-	for s in screen do 
-		local t = awful.tag.add(s.index, {screen=s,
-				layout=awful.layout.layouts[2]})
-		ws[s.index] = t
-		t:view_only()
-	end
-	
-
 	local mt = setmetatable({
-		workspaces = {ws},
+		workspaces = {},
 		current = 1
 	}, {__index = _M})
-	mt:swap_ws(1)
+	--mt:swap_ws(1)
 	return mt
 end
 
@@ -54,6 +45,18 @@ function _M:add_workspace()
 	self.workspaces[ws_number] = ws
 end
 
+function _M:list_ws()
+	local s = ""
+	local len = table_length(self.workspaces)
+	local i = 1
+	for ws,_ in pairs(self.workspaces) do
+		if i == len then s = s .. ws break end
+		s = s .. ws .. "<br>" 
+		i = i + 1
+	end
+	nau.notify{text = s}
+end
+
 function _M:new_ws(name)
 	local ws = {}
 	self.workspaces[name] = ws
@@ -63,26 +66,27 @@ function _M:new_ws(name)
 			{screen=s, layout=awful.layout.layouts[2]}
 		)
 		ws[s.index] = t
-		t:clients({})
+		--t:clients({})
 		t.activated = false
 	end
 	return ws
 end
 
 function _M:swap_ws(name)
-	name = string.lower(name)
+	name = string.lower(tostring(name))
 	local next_ws = self.workspaces[name] or self:new_ws(name)
-
+	
 	for s in screen do
 		s.myworkspacename:set_markup_silently(tostring(name))
 	end
 
 	local active_ws = self.workspaces[self.current]
-
-	for i=1, 9 do
-		local t = active_ws[i]
-		if t then 
-			t.activated = false
+	if active_ws then
+		for i=1, 9 do
+			local t = active_ws[i]
+			if t then 
+				t.activated = false
+			end
 		end
 	end
 
@@ -141,6 +145,30 @@ function _M:view_tag(i)
 	end
 end
 
+function _M:move_client_to_tag(i)
+	local tags = self.workspaces[self.current]
+	if client.focus then
+		local tag = tags[i]
+		local c	  = client.focus
+		local curr_screen = awful.screen.focused()
+		local curr_tag = curr_screen.selected_tag
+
+		if tag and tag.activated then -- move client to tag
+			c:move_to_screen(awful.tag.getscreen(tag))
+			c:move_to_tag(tag)
+			curr_tag:view_only()
+			-- TODO if not activated
+		else -- create tag and move client
+			local s = awful.screen.focused()
+			local t = awful.tag.add(i,{screen=s,layout=awful.layout.layouts[2]})
+			tags[i] = t
+			c:move_to_tag(t)
+		end
+		-- keep the current screen in focus
+		curr_tag:view_only()
+		awful.screen.focus(curr_screen)
+	end
+end
 
 
 return _M

@@ -31,8 +31,9 @@ local has_fdo, freedesktop = pcall(require, "freedesktop")
 
 -- I3 tag handler
 local tags = require "tags"
-local workspace_mod = require "workspace"
-
+--local workspace_mod = require "workspace"
+local workspace = require "workspace".init()
+--local workspace = workspace_mod.init() -- TODO remove the need for init
 -- {{{ Error handling
 -- Check if awesome encountered an error during startup and fell back to
 -- another config (This code will only ever execute for the fallback config)
@@ -260,10 +261,10 @@ awful.screen.connect_for_each_screen(function(s)
     s.mytaglist = awful.widget.taglist(s, awful.widget.taglist.filter.all,
 				taglist_buttons)
 	
-				s.myworkspacename = wibox.widget{
-					markup = "Hello",
-					widget = wibox.widget.textbox
-				}
+	s.myworkspacename = wibox.widget{
+		markup = "",
+		widget = wibox.widget.textbox
+	}
     -- Create a tasklist widget
 	--s.mytasklist = awful.widget.tasklist(s, awful.widget.tasklist.filter.currenttags, tasklist_buttons)
 
@@ -291,8 +292,9 @@ awful.screen.connect_for_each_screen(function(s)
         },
     }
 end)
+workspace:swap_ws(1)
 -- }}}
-local workspace = workspace_mod.init() -- TODO remove the need for init
+--local workspace = workspace_mod.init() -- TODO remove the need for init
 -- {{{ Mouse bindings
 root.buttons(gears.table.join(
     awful.button({ }, 3, function () mymainmenu:toggle() end),
@@ -336,35 +338,23 @@ local spotify = {
 
 
 --local atextbox = wibox.widget.textbox{align = 'center', valign='center'}
-local textbox = wibox.widget{
-	markup = "This is a textbox",
-	align = 'center',
-	valign = 'center',
-	visible = true,
-	forced_height = 200,
-	forced_width = 200,
-	widget = wibox.widget.textbox
-}
 -- {{{ Key bindings
 globalkeys = gears.table.join(
 	awful.key({ modkey }, "a", function()
 		awful.prompt.run {
-			prompt       = '<b>Echo: </b>',
+			prompt       = '<b>Workspace: </b>',
 			text         = '',
 			bg_cursor    = '#ff0000',
-			-- To use the default rc.lua prompt:
-			--textbox      = mouse.screen.mypromptbox.widget,
-			textbox      = textbox,
+			textbox      = awful.screen.focused().mypromptbox.widget,
 			exe_callback = function(input)
 				if not input or #input == 0 then return end
 				workspace:swap_ws(input)
-				naughty.notify{ text = 'The input was: '..input}
 			end
 			}
 		end,
-			{description = "Move to workspace", group = "Bjørnar"}),
-	--awful.key({ modkey, "shift" }, "i", function() w:select_workspace(1) end,
-			--{description = "next workspace", group = "Bjørnar"}),
+			{description = "Select workspace", group = "Bjørnar"}),
+	awful.key({ modkey, "shift" }, "i", function() workspace:list_ws() end,
+			{description = "next workspace", group = "Bjørnar"}),
 	awful.key({ modkey }, "p", spotify.toggle,
 			{description = "PlayPause toggle", group = "Spotify"}),
 	awful.key({ modkey, "Shift" }, "n", spotify.next,
@@ -592,7 +582,7 @@ for i = 1, 9 do
 			{description = "toggle tag #" .. i, group = "tag"}),
         -- Move client to tag.
         awful.key({ modkey, "Shift" }, "#" .. i + 9,
-			function() tags.move_client_to_tag(i) end,
+			function() workspace:move_client_to_tag(i) end,
 			{description = "move focused client to tag #"..i, group = "tag"}),
         -- Toggle tag on focused client.
         awful.key({ modkey, "Control", "Shift" }, "#" .. i + 9,
