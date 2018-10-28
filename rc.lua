@@ -31,7 +31,7 @@ local has_fdo, freedesktop = pcall(require, "freedesktop")
 
 -- I3 tag handler
 local tags = require "tags"
-
+local workspace_mod = require "workspace"
 
 -- {{{ Error handling
 -- Check if awesome encountered an error during startup and fell back to
@@ -216,17 +216,22 @@ local function move_screen()
 end
 
 
+--local w = require "workspace"
+
+--local k = w.init()
+
+--k:add_workspace()
+
+--k:swap_ws(2)
 
 -- Re-set wallpaper when a screen's geometry changes (e.g. different resolution)
 screen.connect_signal("property::geometry", set_wallpaper)
-
-local tag_list = {}
 
 awful.screen.connect_for_each_screen(function(s)
     -- Wallpaper
     set_wallpaper(s)
 
-	tags.add_tag(s)
+	--tags.add_tag(s)
 	--awful.tag({s.index}, s, awful.layout.layouts[1])
 
 	-- add tag to the tag list
@@ -254,6 +259,11 @@ awful.screen.connect_for_each_screen(function(s)
 			--taglist_buttons,
     s.mytaglist = awful.widget.taglist(s, awful.widget.taglist.filter.all,
 				taglist_buttons)
+	
+				s.myworkspacename = wibox.widget{
+					markup = "Hello",
+					widget = wibox.widget.textbox
+				}
     -- Create a tasklist widget
 	--s.mytasklist = awful.widget.tasklist(s, awful.widget.tasklist.filter.currenttags, tasklist_buttons)
 
@@ -265,6 +275,7 @@ awful.screen.connect_for_each_screen(function(s)
     s.mywibox:setup {
         layout = wibox.layout.align.horizontal,
         { -- Left widgets
+			s.myworkspacename,
             layout = wibox.layout.fixed.horizontal,
             --mylauncher,
             s.mytaglist,
@@ -281,7 +292,7 @@ awful.screen.connect_for_each_screen(function(s)
     }
 end)
 -- }}}
-
+local workspace = workspace_mod.init() -- TODO remove the need for init
 -- {{{ Mouse bindings
 root.buttons(gears.table.join(
     awful.button({ }, 3, function () mymainmenu:toggle() end),
@@ -324,12 +335,36 @@ local spotify = {
 
 
 
+--local atextbox = wibox.widget.textbox{align = 'center', valign='center'}
+local textbox = wibox.widget{
+	markup = "This is a textbox",
+	align = 'center',
+	valign = 'center',
+	visible = true,
+	forced_height = 200,
+	forced_width = 200,
+	widget = wibox.widget.textbox
+}
 -- {{{ Key bindings
 globalkeys = gears.table.join(
-	awful.key({ modkey }, "a", new_screen,
-			{description = "add screen", group = "Bjørnar"}),
-	awful.key({ modkey }, "i", move_screen,
-			{description = "next screen", group = "Bjørnar"}),
+	awful.key({ modkey }, "a", function()
+		awful.prompt.run {
+			prompt       = '<b>Echo: </b>',
+			text         = '',
+			bg_cursor    = '#ff0000',
+			-- To use the default rc.lua prompt:
+			--textbox      = mouse.screen.mypromptbox.widget,
+			textbox      = textbox,
+			exe_callback = function(input)
+				if not input or #input == 0 then return end
+				workspace:swap_ws(input)
+				naughty.notify{ text = 'The input was: '..input}
+			end
+			}
+		end,
+			{description = "Move to workspace", group = "Bjørnar"}),
+	--awful.key({ modkey, "shift" }, "i", function() w:select_workspace(1) end,
+			--{description = "next workspace", group = "Bjørnar"}),
 	awful.key({ modkey }, "p", spotify.toggle,
 			{description = "PlayPause toggle", group = "Spotify"}),
 	awful.key({ modkey, "Shift" }, "n", spotify.next,
@@ -533,6 +568,7 @@ clientkeys = gears.table.join(
         {description = "(un)maximize horizontally", group = "client"})
 )
 
+
 --
 -- Bind all key numbers to tags.
 -- Be careful: we use keycodes to make it work on any keyboard layout.
@@ -542,7 +578,7 @@ for i = 1, 9 do
         -- View tag only.
 		-- TODO figure out how to enable tag 0 ~ 10
 		awful.key({ modkey }, "#" .. i + 9, 
-			function() tags.view_tag(i) end,
+			function() workspace:view_tag(i) end,
 			{description = "view tag #"..i, group = "tag"}),
         -- Toggle tag display.
         awful.key({ modkey, "Control" }, "#" .. i + 9,
