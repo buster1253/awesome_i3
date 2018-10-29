@@ -8,10 +8,19 @@ local wibox = require "wibox"
 local _M = {}
 
 local function get_position(tag_name, tags) 
-	for i,tag in ipairs(_tags) do
-		if tag and tag.name == tag_name then return i end
+	local j = 0
+	for i=1, 9 do
+		local tag = tags[i]
+		if tag then j = j + 1 end
+		if tag and tag.name == tag_name then 
+			nau.notify{text="i:" .. j}
+			return j 
+		end
 	end
-	return math.huge
+	--for i,tag in ipairs(tags) do
+		--if tag and tag.name == tag_name then return i end
+	--end
+	return 9 
 end
 
 local function table_length(t) 
@@ -136,11 +145,8 @@ function _M:view_tag(i)
 		local t = awful.tag.add(i,{screen=s, layout=awful.layout.layouts[2]})
 		tags[i] = t
 		-- get_position is used so that named tags may be used in the future
-		--for ti,tag in ipairs(s.tags) do
-			--if get_position(tag.name, tags) > i then
-				--awful.tag.move(ti, t)
-			--end
-		--end
+		awful.tag.move(get_position(t.name, tags), t)
+
 		t:view_only()
 	end
 end
