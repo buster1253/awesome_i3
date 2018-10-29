@@ -26,11 +26,17 @@ local function table_length(t)
 	return c
 end
 
+local mt
+local initialized = false
+
+
 function _M.init()
-	local mt = setmetatable({
+  if initialized then return mt end
+	mt = setmetatable({
 		workspaces = {},
 		current = 1
 	}, {__index = _M})
+  initialized = true
 	return mt
 end
 

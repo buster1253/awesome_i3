@@ -1,5 +1,22 @@
-local gear = require "gears"
---local workspace = require "workspace"
+local awful         = require "awful"
+local gears         = require "gears"
+local workspace     = require "workspace"
+local hotkeys_popup = require("awful.hotkeys_popup").widget
+
+-- TODO move this to another module
+local def = "dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify"
+		.." /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player."
+local spotify = {
+	toggle = function()
+		os.execute(def.."PlayPause")
+	end,
+	prev = function()
+		os.execute(def.."Previous")
+	end,
+	next = function()
+		os.execute(def.."Next")
+	end
+}
 
 local globalkeys = gears.table.join(
 	awful.key({ modkey }, "a", function()
@@ -154,40 +171,17 @@ local globalkeys = gears.table.join(
 )
 
 -- Swap tags
--- TODO support for 0
-for i = 1, 9 do
+for i = 0, 9 do
   globalkeys = gears.table.join(globalkeys,
   -- View tag only.
-    awful.key({ modkey }, "#" .. i + 9, 
-      function() workspace:view_tag(i) end,
+    awful.key({ modkey }, i, 
+      function() if i == 0 then i = 10 end workspace:view_tag(i) end,
       {description = "view tag #"..i, group = "tag"}),
 
-  -- Toggle tag display.
-    awful.key({ modkey, "Control" }, "#" .. i + 9,
-      function()
-        local screen = awful.screen.focused()
-        local tag = screen.tags[i]
-        if tag then
-          awful.tag.viewtoggle(tag)
-        end
-      end,
-      {description = "toggle tag #" .. i, group = "tag"}),
   -- Move client to tag.
-    awful.key({ modkey, "Shift" }, "#" .. i + 9,
-      function() workspace:move_client_to_tag(i) end,
-      {description = "move focused client to tag #"..i, group = "tag"}),
-
-    -- Toggle tag on focused client.
-    awful.key({ modkey, "Control", "Shift" }, "#" .. i + 9,
-      function ()
-        if client.focus then
-          local tag = client.focus.screen.tags[i]
-          if tag then
-            client.focus:toggle_tag(tag)
-          end
-        end
-      end,
-      {description = "toggle focused client on tag #" .. i, group = "tag"})
+    awful.key({ modkey, "Shift" }, i,
+      function() if i == 0 then i = 10 end workspace:move_client_to_tag(i) end,
+      {description = "move focused client to tag #"..i, group = "tag"})
   )
 end
 
