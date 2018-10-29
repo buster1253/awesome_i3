@@ -30,7 +30,7 @@ local has_fdo, freedesktop = pcall(require, "freedesktop")
 --mymenu:init({ env = env })
 
 -- I3 tag handler
-local workspace = require "workspace".init()
+local workspace = require "workspace"
 --local workspace = workspace_mod.init() -- TODO remove the need for init
 -- {{{ Error handling
 -- Check if awesome encountered an error during startup and fell back to

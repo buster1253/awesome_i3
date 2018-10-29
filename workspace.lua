@@ -1,14 +1,7 @@
 local awful = require "awful"
 local gears = require "gears"
-local tags = require "tags"
 local nau = require "naughty"
 local wibox = require "wibox"
-
-local mt = {}
-local initialized = false
-
--- Globally accessible variable
-workspace = mt
 
 local _M = {}
 
@@ -22,9 +15,6 @@ local function get_position(tag_name, tags)
 			return j 
 		end
 	end
-	--for i,tag in ipairs(tags) do
-		--if tag and tag.name == tag_name then return i end
-	--end
 	return 9 
 end
 
@@ -41,23 +31,9 @@ function _M.init()
 		workspaces = {},
 		current = 1
 	}, {__index = _M})
-	--mt:swap_ws(1)
 	return mt
 end
 
-
-function _M:add_workspace()
-	local ws_number = #self.workspaces + 1
-	local ws = {}
-
-	for s in screen do
-		local t = awful.tag.add(s.index, {screen=s, layout=awful.layout.layouts[2]})
-		ws[s.index] = t
-		t:clients({})
-		t.activated = false
-	end
-	self.workspaces[ws_number] = ws
-end
 
 function _M:list_ws()
 	local s = ""
@@ -80,7 +56,6 @@ function _M:new_ws(name)
 			{screen=s, layout=awful.layout.layouts[2]}
 		)
 		ws[s.index] = t
-		--t:clients({})
 		t.activated = false
 	end
 	return ws
@@ -182,4 +157,4 @@ function _M:move_client_to_tag(i)
 end
 
 
-return _M
+return _M.init()
