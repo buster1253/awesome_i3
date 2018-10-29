@@ -4,6 +4,11 @@ local tags = require "tags"
 local nau = require "naughty"
 local wibox = require "wibox"
 
+local mt = {}
+local initialized = false
+
+-- Globally accessible variable
+workspace = mt
 
 local _M = {}
 

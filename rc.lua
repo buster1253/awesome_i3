@@ -30,8 +30,6 @@ local has_fdo, freedesktop = pcall(require, "freedesktop")
 --mymenu:init({ env = env })
 
 -- I3 tag handler
-local tags = require "tags"
---local workspace_mod = require "workspace"
 local workspace = require "workspace".init()
 --local workspace = workspace_mod.init() -- TODO remove the need for init
 -- {{{ Error handling
@@ -229,42 +227,30 @@ end
 screen.connect_signal("property::geometry", set_wallpaper)
 
 awful.screen.connect_for_each_screen(function(s)
-    -- Wallpaper
-    set_wallpaper(s)
+  -- Wallpaper
+  set_wallpaper(s)
 
-	--tags.add_tag(s)
-	--awful.tag({s.index}, s, awful.layout.layouts[1])
+  -- Create a promptbox for each screen
+  s.mypromptbox = awful.widget.prompt()
+  -- Create an imagebox widget which will contain an icon indicating which layout we're using.
+  -- We need one layoutbox per screen.
+  s.mylayoutbox = awful.widget.layoutbox(s)
+  s.mylayoutbox:buttons(gears.table.join(
+  awful.button({ }, 1, function () awful.layout.inc( 1) end),
+  awful.button({ }, 3, function () awful.layout.inc(-1) end),
+  awful.button({ }, 4, function () awful.layout.inc( 1) end),
+  awful.button({ }, 5, function () awful.layout.inc(-1) end)
+  ))
+  -- taglist widget
+  s.mytaglist = awful.widget.taglist(s, awful.widget.taglist.filter.all,
+  taglist_buttons)
 
-	-- add tag to the tag list
-	--tag_list[s.index] = s.tags[1]
-    -- Each screen has its own tag table.
-    --awful.tag({ "gen", "dev", "web", "4", "5", "6", "7", "8", "9" }, 
-			--s, awful.layout.layouts[1])
-
-    --awful.tag({s.index}, 
-			--s, awful.layout.layouts[1])
-    -- Create a promptbox for each screen
-    s.mypromptbox = awful.widget.prompt()
-    -- Create an imagebox widget which will contain an icon indicating which layout we're using.
-    -- We need one layoutbox per screen.
-    s.mylayoutbox = awful.widget.layoutbox(s)
-    s.mylayoutbox:buttons(gears.table.join(
-		awful.button({ }, 1, function () awful.layout.inc( 1) end),
-		awful.button({ }, 3, function () awful.layout.inc(-1) end),
-		awful.button({ }, 4, function () awful.layout.inc( 1) end),
-		awful.button({ }, 5, function () awful.layout.inc(-1) end)
-	))
-    -- Create a taglist widget
-    --s.mytaglist = awful.widget.taglist(s, 
-			--awful.widget.taglist.filter.all, 
-			--taglist_buttons,
-    s.mytaglist = awful.widget.taglist(s, awful.widget.taglist.filter.all,
-				taglist_buttons)
-	
-	s.myworkspacename = wibox.widget{
-		markup = "",
-		widget = wibox.widget.textbox
-	}
+  -- display current workspace
+  s.myworkspacename = wibox.widget{
+    markup = "",
+    widget = wibox.widget.textbox
+  }
+  
     -- Create a tasklist widget
 	--s.mytasklist = awful.widget.tasklist(s, awful.widget.tasklist.filter.currenttags, tasklist_buttons)
 
@@ -495,10 +481,10 @@ globalkeys = gears.table.join(
               end,
               {description = "lua execute prompt", group = "awesome"})
 
-    -- Menubar
-	--awful.key({ modkey }, "p", 
-				--function() menubar.show() end,
-			  --{description = "show the menubar", group = "launcher"})
+     --Menubar
+  --awful.key({ modkey }, "p", 
+        --function() menubar.show() end,
+        --{description = "show the menubar", group = "launcher"})
 )
 
 clientkeys = gears.table.join(
@@ -563,6 +549,7 @@ clientkeys = gears.table.join(
 -- Bind all key numbers to tags.
 -- Be careful: we use keycodes to make it work on any keyboard layout.
 -- This should map on the top row of your keyboard, usually 1 to 9.
+-- TODO add support for 0
 for i = 1, 9 do
 	globalkeys = gears.table.join(globalkeys,
         -- View tag only.
