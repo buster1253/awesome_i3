@@ -9,7 +9,7 @@ local function get_position(tag_name, tags, screen_id)
 	local j = 0
 	for i=1, 9 do
 		local tag = tags[i]
-		if tag and tag.screen.index == screen_id then 
+		if tag and tag.activated and tag.screen.index == screen_id then 
       j = j + 1 
       if tag.name == tag_name then return j end
     end
@@ -113,9 +113,9 @@ function _M:view_tag(i)
 	else  -- create the tag and move to current screen
 		tag = awful.tag.add(i,{screen=c_screen, layout=awful.layout.layouts[2]})
 		tags[i] = tag
-		-- get_position is used so that named tags may be used in the future
-		awful.tag.move(get_position(tag.name, tags, c_screen.index), tag)
 	end
+  -- get_position is used so that named tags may be used in the future
+  awful.tag.move(get_position(tag.name, tags, c_screen.index), tag)
   tag:view_only()
   if n_screen.index == c_screen.index 
     and self:count_tags(c_screen.index) > 1 
@@ -125,27 +125,26 @@ function _M:view_tag(i)
 end
 
 function _M:move_client_to_tag(i)
-	local tags = self.workspaces[self.current]
 	if client.focus then
+    local tags = self.workspaces[self.current]
 		local tag = tags[i]
 		local c	  = client.focus
-		local curr_screen = awful.screen.focused()
-		local curr_tag = curr_screen.selected_tag
+		local c_screen = awful.screen.focused()
+		local c_tag = c_screen.selected_tag
 
-		if tag and tag.activated then -- move client to tag
-			c:move_to_screen(awful.tag.getscreen(tag))
+		if tag then -- move client to tag
+      if tag.name == c_tag.name then return end
+      tag.activated = true
+      c:move_to_screen(tag.screen)
 			c:move_to_tag(tag)
-			curr_tag:view_only()
-			-- TODO if not activated
 		else -- create tag and move client
-			local s = awful.screen.focused()
-			local t = awful.tag.add(i,{screen=s,layout=awful.layout.layouts[2]})
-			tags[i] = t
-			c:move_to_tag(t)
+			tag = awful.tag.add(i,{screen=c_screen,layout=awful.layout.layouts[2]})
+			tags[i] = tag
+			c:move_to_tag(tag)
 		end
 		-- keep the current screen in focus
-		curr_tag:view_only()
-		awful.screen.focus(curr_screen)
+		c_tag:view_only()
+		awful.screen.focus(c_screen)
 	end
 end
 
