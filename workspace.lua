@@ -5,18 +5,18 @@ local wibox = require "wibox"
 
 local _M = {}
 
-local function get_position(tag_name, tags) 
+local function get_position(tag_name, tags, screen_id) 
 	local j = 0
 	for i=1, 9 do
 		local tag = tags[i]
-		if tag then j = j + 1 end
-		if tag and tag.name == tag_name then 
-			nau.notify{text="i:" .. j}
-			return j 
-		end
+		if tag and tag.screen.index == screen_id then 
+      j = j + 1 
+      if tag.name == tag_name then return j end
+    end
 	end
 	return 9 
 end
+
 
 local function table_length(t) 
 	local c = 0
@@ -102,39 +102,26 @@ end
 function _M:view_tag(i)
 	local tags = self.workspaces[self.current]
 	local tag = tags[i]
-	if tag and tag.activated then -- move to tag & screen
-		local curr_screen = awful.screen.focused()
-		local curr_tag = curr_screen.selected_tag
-		--local new_screen = awful.tag.getscreen(tag)
-		local new_screen = tag.screen
-		awful.screen.focus(new_screen)
-		tag:view_only()
-		
-		--tag:clients({})
-		--curr_tag:clients(clients)
+  local c_screen = awful.screen.focused()
+  local n_screen = tag and tag.screen or c_screen
+  local c_tag = c_screen.selected_tag
 
-		--nau.notify({ preset = nau.config.presets.critical,
-				--title = "client tag",
-				--text = client[1].tag })
-
-		-- don't remove the tag if it's the only one remove
-		if new_screen.index == curr_screen.index 
-			and #curr_screen.tags > 1 
-			and table_length(curr_tag:clients()) < 1 then
-			--tag.activated = false
-		end
-	elseif tag and not tag.activated then
-		tag.activated = true
-		tag:view_only()
+  if tag then
+    if tag.name == c_tag.name then return end
+    awful.screen.focus(n_screen)
+    tag.activated = true
 	else  -- create the tag and move to current screen
-		local s = awful.screen.focused()
-		local t = awful.tag.add(i,{screen=s, layout=awful.layout.layouts[2]})
-		tags[i] = t
+		tag = awful.tag.add(i,{screen=c_screen, layout=awful.layout.layouts[2]})
+		tags[i] = tag
 		-- get_position is used so that named tags may be used in the future
-		awful.tag.move(get_position(t.name, tags), t)
-
-		t:view_only()
+		awful.tag.move(get_position(tag.name, tags, c_screen.index), tag)
 	end
+  tag:view_only()
+  if n_screen.index == c_screen.index 
+    and self:count_tags(c_screen.index) > 1 
+    and #c_tag:clients() < 1 then
+    c_tag.activated = false
+  end
 end
 
 function _M:move_client_to_tag(i)
@@ -162,5 +149,12 @@ function _M:move_client_to_tag(i)
 	end
 end
 
+function _M:count_tags(screen_id)
+  local c = 0
+  for _,t in pairs(self.workspaces[self.current]) do
+    if t.screen.index == screen_id then c = c + 1 end
+  end
+  return c
+end
 
 return _M.init()
