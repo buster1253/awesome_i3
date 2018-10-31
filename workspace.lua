@@ -108,7 +108,10 @@ function _M:view_tag(i)
 
   if tag then
     if tag.name == c_tag.name then return end
-    awful.screen.focus(n_screen)
+    if not tag.activated then
+      tag.screen = c_screen
+    end
+    awful.screen.focus(tag.screen)
     tag.activated = true
 	else  -- create the tag and move to current screen
 		tag = awful.tag.add(i,{screen=c_screen, layout=awful.layout.layouts[2]})
