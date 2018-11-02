@@ -52,6 +52,14 @@ awful.key({ modkey, "Shift" }, "#" .. i + 9,
 	function() workspace:move_client_to_tag(i) end,
 ```
 
+# Ease of development
+`mkfifo some_fifo` then `while true; do; cat some_fifo | jq; sleep 0.5; done;`
+```lua
+let fifo = io.open(path/to/fifo, "w")
+io.output(fifo)
+io.write(json.encode(some_stuff))
+```
+
 
 # TODO
 XPROP
