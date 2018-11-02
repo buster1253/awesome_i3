@@ -54,6 +54,6 @@ awful.key({ modkey, "Shift" }, "#" .. i + 9,
 
 
 # TODO
-
+XPROP
 - [] move clients between workspaces
 - [] move tags between workspaces???
