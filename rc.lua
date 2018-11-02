@@ -211,14 +211,6 @@ local function move_screen()
 end
 
 
---local w = require "workspace"
-
---local k = w.init()
-
---k:add_workspace()
-
---k:swap_ws(2)
-
 -- Re-set wallpaper when a screen's geometry changes (e.g. different resolution)
 screen.connect_signal("property::geometry", set_wallpaper)
 
@@ -246,6 +238,27 @@ awful.screen.connect_for_each_screen(function(s)
     markup = "",
     widget = wibox.widget.textbox
   }
+  s.battery = wibox.widget{
+    {
+      max_value = 100,
+      value = 90,
+      forced_height = 5,
+      paddings = 0,
+      bar_border_color = beautiful.bg_focus,
+      background_color = "#000",
+
+      border_width = 8,
+      border_color = beautiful.bg_normal,
+      forced_width = 100,
+      widget = wibox.widget.progressbar
+    },
+    {
+      text = "50%",
+      color = "#F00",
+      widget = wibox.widget.textbox,
+    },
+    layout = wibox.layout.stack
+  }
   
     -- Create a tasklist widget
 	--s.mytasklist = awful.widget.tasklist(s, awful.widget.tasklist.filter.currenttags, tasklist_buttons)
@@ -267,6 +280,7 @@ awful.screen.connect_for_each_screen(function(s)
         s.mytasklist, -- Middle widget
         { -- Right widgets
             layout = wibox.layout.fixed.horizontal,
+            s.battery,
             --mykeyboardlayout,
             wibox.widget.systray(),
             mytextclock,
@@ -278,13 +292,56 @@ workspace:swap_ws(1)
 -- }}}
 --local workspace = workspace_mod.init() -- TODO remove the need for init
 -- {{{ Mouse bindings
-root.buttons(gears.table.join(
-    awful.button({ }, 3, function () mymainmenu:toggle() end),
-    awful.button({ }, 4, awful.tag.viewnext),
-    awful.button({ }, 5, awful.tag.viewprev)
-))
--- }}}
 
+--root.buttons(gears.table.join(
+    --awful.button({ }, 3, function () mymainmenu:toggle() end),
+    --awful.button({ }, 4, awful.tag.viewnext),
+    --awful.button({ }, 5, awful.tag.viewprev)
+--))
+-- }}}
+clientkeys = gears.table.join(
+    awful.key({ modkey }, "f",
+        function (c)
+            c.fullscreen = not c.fullscreen
+            c:raise()
+        end,
+        {description = "toggle fullscreen", group = "client"}),
+    awful.key({ modkey, "Shift"   }, "q",      function (c) c:kill()                         end,
+              {description = "close", group = "client"}),
+    awful.key({ modkey, "Control" }, "space",  awful.client.floating.toggle                     ,
+              {description = "toggle floating", group = "client"}),
+    awful.key({ modkey, "Control" }, "Return", function (c) c:swap(awful.client.getmaster()) end,
+              {description = "move to master", group = "client"}),
+    awful.key({ modkey,           }, "o",      function (c) c:move_to_screen()               end,
+              {description = "move to screen", group = "client"}),
+    awful.key({ modkey,           }, "t",      function (c) c.ontop = not c.ontop            end,
+              {description = "toggle keep on top", group = "client"}),
+    awful.key({ modkey,           }, "n",
+        function (c)
+            -- The client currently has the input focus, so it cannot be
+            -- minimized, since minimized clients can't have the focus.
+            c.minimized = true
+        end ,
+        {description = "minimize", group = "client"}),
+    awful.key({ modkey,           }, "m",
+        function (c)
+            c.maximized = not c.maximized
+            c:raise()
+        end ,
+        {description = "(un)maximize", group = "client"}),
+    awful.key({ modkey, "Control" }, "m",
+        function (c)
+            c.maximized_vertical = not c.maximized_vertical
+            c:raise()
+        end ,
+        {description = "(un)maximize vertically", group = "client"}),
+    awful.key({ modkey, "Shift"   }, "m",
+        function (c)
+            c.maximized_horizontal = not c.maximized_horizontal
+            c:raise()
+        end ,
+        {description = "(un)maximize horizontally", group = "client"})
+)
 clientbuttons = gears.table.join(
     awful.button({ }, 1, function (c) client.focus = c; c:raise() end),
     awful.button({ modkey }, 1, awful.mouse.client.move),
@@ -402,7 +459,7 @@ client.connect_signal("request::titlebars", function(c)
 	awful.titlebar(c,titlebar_style) : setup {
         { -- Left
             --awful.titlebar.widget.iconwidget(c), -- show process icon
-            buttons = buttons,
+            --buttons = buttons,
             layout  = wibox.layout.fixed.horizontal
         },
         { -- Middle
@@ -414,11 +471,11 @@ client.connect_signal("request::titlebars", function(c)
             layout  = wibox.layout.flex.horizontal
         },
         { -- Right
-            awful.titlebar.widget.floatingbutton (c),
-            awful.titlebar.widget.maximizedbutton(c),
-            awful.titlebar.widget.stickybutton   (c),
-            awful.titlebar.widget.ontopbutton    (c),
-            awful.titlebar.widget.closebutton    (c),
+            --awful.titlebar.widget.floatingbutton (c),
+            --awful.titlebar.widget.maximizedbutton(c),
+            --awful.titlebar.widget.stickybutton   (c),
+            --awful.titlebar.widget.ontopbutton    (c),
+            --awful.titlebar.widget.closebutton    (c),
             layout = wibox.layout.fixed.horizontal()
         },
         layout = wibox.layout.align.horizontal
@@ -440,5 +497,5 @@ client.connect_signal("unfocus",
 	function(c) c.border_color = beautiful.border_normal 
 end)
 -- }}}
---naughty.suspend()
+naughty.suspend()
 --awful.titlebar.hide()
