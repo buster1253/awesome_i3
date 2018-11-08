@@ -2,6 +2,7 @@ local awful = require "awful"
 local gears = require "gears"
 local nau = require "naughty"
 local wibox = require "wibox"
+local i3_layout = require "i3_layout"
 
 local _M = {}
 
@@ -59,7 +60,8 @@ function _M:new_ws(name)
 
 	for s in screen do
 		local t = awful.tag.add(s.index, 
-			{screen=s, layout=awful.layout.layouts[2]}
+			--{screen=s, layout=awful.layout.layouts[2]}
+			{screen=s, layout=i3_layout}
 		)
 		ws[s.index] = t
 		t.activated = false
@@ -114,7 +116,8 @@ function _M:view_tag(i)
     awful.screen.focus(tag.screen)
     tag.activated = true
 	else  -- create the tag and move to current screen
-		tag = awful.tag.add(i,{screen=c_screen, layout=awful.layout.layouts[2]})
+		--tag = awful.tag.add(i,{screen=c_screen, layout=awful.layout.layouts[2]})
+		tag = awful.tag.add(i,{screen=c_screen, layout=i3_layout})
 		tags[i] = tag
 	end
   -- get_position is used so that named tags may be used in the future
