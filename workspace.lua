@@ -116,12 +116,10 @@ function _M:view_tag(i)
     awful.screen.focus(tag.screen)
     tag.activated = true
 	else  -- create the tag and move to current screen
-		--tag = awful.tag.add(i,{screen=c_screen, layout=awful.layout.layouts[2]})
 		tag = awful.tag.add(i,{screen=c_screen, layout=i3_layout})
 		tags[i] = tag
 	end
-  -- get_position is used so that named tags may be used in the future
-  awful.tag.move(get_position(tag.name, tags, c_screen.index), tag)
+  tag.index = get_position(tag.name, tags, c_screen.index)
   tag:view_only()
   if n_screen.index == c_screen.index 
     and self:count_tags(c_screen.index) > 1 
