@@ -2,6 +2,7 @@ local awful         = require "awful"
 local gears         = require "gears"
 local workspace     = require "workspace"
 local hotkeys_popup = require("awful.hotkeys_popup").widget
+local layout = require "i3_layout"
 
 -- TODO move this to another module
 local def = "dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify"
@@ -19,6 +20,8 @@ local spotify = {
 }
 
 local globalkeys = gears.table.join(
+	awful.key({ modkey, "Control" }, "t", function() layout.toggle_orientation()end,
+			{description = "List workspaces", group = "workspaces"}),
 	awful.key({ modkey }, "a", function()
 		awful.prompt.run {
 			prompt       = '<b>Workspace: </b>',
