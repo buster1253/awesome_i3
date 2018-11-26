@@ -22,6 +22,10 @@ local spotify = {
 local globalkeys = gears.table.join(
 	awful.key({ modkey, "Control" }, "t", function() layout.toggle_orientation()end,
 			{description = "List workspaces", group = "workspaces"}),
+	awful.key({ modkey }, "v", function() layout.split("v") end,
+			{description = "List workspaces", group = "workspaces"}),
+	awful.key({ modkey }, "h", function() layout.split("h") end,
+			{description = "List workspaces", group = "workspaces"}),
 	awful.key({ modkey }, "a", function()
 		awful.prompt.run {
 			prompt       = '<b>Workspace: </b>',

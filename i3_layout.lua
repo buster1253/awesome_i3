@@ -13,21 +13,8 @@ local nau = require "naughty"
 local note = nau.notify
 local parent = require "layout_parent"
 
-local function log(msg)
-  if type(msg) ~= "table" then
-    msg = {text=msg}
-  end
-  io.write(je(msg) .. "\n")
-end
-
-
-
-
 -- REQUIERED
   --log("HISTORY???", awful.client.focus.history.is_enabled())
-
-
-
 
 local function table_length(t) 
 	local c = 0
@@ -45,45 +32,15 @@ end
 
 --- MODULE
 
-local tags = {}
-
 local _M = {
   name = "i3",
   orientation = "v",
 }
 
-local function add_child(cur, new)
-  local cg = cur.geometries
-  local ng = new.geometries
-  if _M.orientation == "v" then
-    local nw = cg.width / 2
-    cg.width = nw
-    ng.width = nw
-    ng.x = cg.x + nw
-    ng.y = cg.y
-    ng.height = cg.height
-  else
-    local nh = cg.height / 2
-    cg.height = nh
-    ng.height = nh
-    ng.x = ch.x
-    ng.y = cg.y + nh
-    ng.width  = cg.width
-  end
-end
-
---[[
-Special cases:
-- first client -> c == screen
-
---]]
-
 local settings = {
   orientation = "v",
-  split_parent = false
+  split_parent = true
 }
-
-local was = {}
 
 function _M.new_client(c)
   local t = awful.screen.focused().selected_tag
@@ -91,19 +48,17 @@ function _M.new_client(c)
   awful.client.focus.history.previous() -- awesome moves the focus before calling arrange
   local focused = client.focus
 
-
   -- if the client is the only one, screen is set as parent
-  if #s.clients < 2 then
+  if #s.clients == 1 then
     local wa = s.workarea
     c.workarea = {
-    --c.workarea = {
       width = wa.width,
       height = wa.height,
       x = wa.x,
       y = wa.y
     }
     c.parent = s
-    s.orientation = settings.orientation
+    s.orientation = s.orientation or settings.orientation
     client.focus = c
     c:raise()
     return
@@ -113,20 +68,28 @@ function _M.new_client(c)
   if focused then
     local p
     if settings.split_parent then
-      p = focused.parent or s
+      p = focused.parent
     else
       p = {
         workarea = focused.workarea,
-        clients = {focused, c},
-        orientation = settings.orientation
+        clients = {focused},
+        orientation = settings.orientation,
+        parent = focused.parent
       }
       focused.parent = p
+      for i,v in ipairs(focused.parent.clients) do
+        if v == focused then
+          focused.parent.clients[i] = p
+          break
+        end
+      end
     end
+
     c.parent = p
+    table.insert(p.clients, c)
     
     --local p = focused.parent or s
     if p.orientation == "v" then
-      log("width", p.workarea.width)
       local w = p.workarea.width / #p.clients
       for i,c in ipairs(p.clients) do
         c.workarea = {
@@ -153,25 +116,34 @@ function _M.new_client(c)
 end
 
 function _M.del_client(c)
-  print("\n===============DEL===================\n")
+  local s = awful.screen.focused()
   local p = c.parent 
+  if not p then print("NO FUCKING PARENT") end
+  if p == s then
+    print("SCREEEN")
+  end
   local o = p.orientation
   local w,h = 0,0
-  if o == "v" then
-    w = c.workarea.width / (#p.clients) 
-  elseif o == "h" then
-    h = c.workarea.height / (#p.clients)
+
+  local client_count
+  if p == s then
+    client_count = #p.clients
   else
-    log("MISSING ORIENTATION")
+    client_count = #p.clients - 1
   end
 
-  
+  if o == "v" then
+    w = c.workarea.width / client_count
+  elseif o == "h" then
+    h = c.workarea.height / client_count
+  else
+    log("Invalid orientation")
+  end
+
   local lx = p.workarea.x
   local ly = p.workarea.y
-  local ww = p.workarea.width
-  
+
   for i,cl in ipairs(p.clients) do
-    print(i)
     if c == cl then
       table.remove(p.clients, i)
     else
@@ -182,8 +154,18 @@ function _M.del_client(c)
 
       if o == "v" then lx = lx + cl.workarea.width end
       if o == "h" then ly = ly + cl.workarea.height end
-      log("WA", je(cl.workarea))
     end
+  end
+  if client_count == 1 then
+    if p.parent then
+      p.clients[1].parent = p.parent
+    else
+      log("OJHOJHOHOHOHOH")
+    end
+  end
+  
+  if #p.clients == 0 and p ~= s then
+    _M.del_client(p)
   end
 end
 
@@ -204,17 +186,45 @@ local function place_client(c)
 end
 
 local function arrange(s)
-  local wa  = s.workarea
   local cls = s.clients
   for i=1, #cls do
     local c = cls[i]
     if c.clients and #c.clients > 0 then
-      -- client is parent
       arrange_parent(c)
     else
       place_client(c)
     end
   end
+end
+
+
+function _M.split(orientation)
+  if orientation ~= "v" and orientation ~= "h" then 
+    print("Layout.split invalid orientation " .. orientation)
+  end
+  local s = awful.screen.focused()
+  local focused = client.focus
+  if not focused then
+    s.orientation = orientation
+    return
+  end
+  local parent = focused.parent
+  settings.split_parent = true
+  parent.orientation = orientation
+  local new_parent = {
+    workarea = focused.workarea,
+    clients = {focused} ,
+    orientation = orientation,
+    parent = focused.parent
+  }
+  for i,v in ipairs(parent.clients) do
+    if v == focused then
+      parent.clients[i] = new_parent
+      break
+    end
+  end
+  focused.parent = new_parent
+  arrange(s)
 end
 
 function _M.toggle_orientation()
@@ -245,13 +255,8 @@ function _M.toggle_orientation()
       }
     end
   end
-  for k,v in pairs(s.geometry) do
-    print(k)
-  end
-  log("GEO", s.geometry)
   arrange(s)
 end
-
 --local function arrange(s, g)
   --local workarea = s.workarea   -- space to work with
   --local clients = s.clients           -- clients to place
