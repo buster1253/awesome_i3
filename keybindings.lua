@@ -20,12 +20,24 @@ local spotify = {
 }
 
 local globalkeys = gears.table.join(
+----------------------- LAYOUT ------------------------
 	awful.key({ modkey, "Control" }, "t", function() layout.toggle_orientation()end,
 			{description = "List workspaces", group = "workspaces"}),
 	awful.key({ modkey }, "v", function() layout.split("v") end,
 			{description = "List workspaces", group = "workspaces"}),
-	awful.key({ modkey }, "h", function() layout.split("h") end,
+	awful.key({ modkey }, "g", function() layout.split("h") end,
 			{description = "List workspaces", group = "workspaces"}),
+	awful.key({ modkey }, "h", function() layout.move_focus("W") end,
+			{description = "List workspaces", group = "workspaces"}),
+	awful.key({ modkey }, "l", function() layout.move_focus("E") end,
+			{description = "List workspaces", group = "workspaces"}),
+	awful.key({ modkey }, "k", function() layout.move_focus("N") end,
+			{description = "List workspaces", group = "workspaces"}),
+	awful.key({ modkey }, "j", function() layout.move_focus("S") end,
+			{description = "List workspaces", group = "workspaces"}),
+	awful.key({ modkey, "Shift"}, "s", function() layout.serialize() end,
+			{description = "List workspaces", group = "workspaces"}),
+
 	awful.key({ modkey }, "a", function()
 		awful.prompt.run {
 			prompt       = '<b>Workspace: </b>',
@@ -61,13 +73,13 @@ local globalkeys = gears.table.join(
   awful.key({ modkey}, "Escape",	awful.tag.history.restore,
       {description = "go back", group = "tag"}),
 
-  awful.key({ modkey }, "j",
-      function() awful.client.focus.byidx(1) end,
-      {description = "focus next by index", group = "client"}),
+  --awful.key({ modkey }, "j",
+      --function() awful.client.focus.byidx(1) end,
+      --{description = "focus next by index", group = "client"}),
 
-  awful.key({ modkey }, "k",
-      function() awful.client.focus.byidx(-1) end,
-      {description = "focus previous by index", group = "client"}),
+  --awful.key({ modkey }, "k",
+      --function() awful.client.focus.byidx(-1) end,
+      --{description = "focus previous by index", group = "client"}),
 
   awful.key({ modkey }, "w", 
       function() mymainmenu:show() end,
