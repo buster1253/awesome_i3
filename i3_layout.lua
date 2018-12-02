@@ -29,10 +29,6 @@ local function log(hdr, ...)
   print("================================\n")
 end
 
---TODO swap h,v functionality
---o
--- MODULE
-
 local _M = {
   name = "i3",
 }
@@ -42,6 +38,39 @@ local settings = {
   split_parent = true
 }
 
+-----------------------------------------
+local function place_client(c)
+  --log("WA", je(c.workarea))
+  if not c.geometry then return end
+  c:geometry(c.workarea)
+end
+
+local function arrange_parent(p)
+  for i=1, #p.layout_clients do
+    local c = p.layout_clients[i]
+    if c.layout_clients and #c.layout_clients > 0 then
+      arrange_parent(c)
+    else
+      place_client(c)
+    end
+  end
+end
+
+
+local function arrange(s)
+  if not s.layout_clients then return end
+  local cls = s.layout_clients
+  for i=1, #cls do
+    local c = cls[i]
+    if c.layout_clients and #c.layout_clients > 0 then
+      arrange_parent(c)
+    else
+      place_client(c)
+    end
+  end
+end
+
+-------------------------------------
 function _M.new_client(c, f)
   local s = awful.screen.focused()
   if not s.layout_clients then s.layout_clients = {} end
@@ -113,152 +142,228 @@ function _M.new_client(c, f)
   client.focus = c
 end
 
-function _M.del_client(c)
-  local s = awful.screen.focused()
-  local p = c.parent 
+-- removes the client from the parent
+local function _remove_client(c) 
+  local p = c.parent
+  local cls = p.layout_clients
+  local wd = c.workarea.width / (#cls - 1)
+  local hd = c.workarea.height / (#cls - 1)
+  local sx = p.workarea.x
+  local sy = p.workarea.y
   local o = p.orientation
-  local w,h = 0,0
-
-  local client_count = #p.layout_clients -1 -- There is a reason for this, though it's forgotten
-  --if p == s then client_count = #p.layout_clients
-  --else client_count = #p.layout_clients - 1 end
-
-  if o == "h" then
-    w = c.workarea.width / client_count
-  elseif o == "v" then
-    h = c.workarea.height / client_count
-  else return end
-
-  local lx = p.workarea.x
-  local ly = p.workarea.y
-
-  --TODO respect the size of the given elements
-  for i,cl in ipairs(p.layout_clients) do
-    if c == cl then
-      remove_idx = i
-    else
-      cl.workarea.x = lx
-      cl.workarea.y = ly
-      cl.workarea.width  = cl.workarea.width  + w
-      cl.workarea.height = cl.workarea.height + h
-      if     o == "h" then lx = lx + cl.workarea.width
-      elseif o == "v" then ly = ly + cl.workarea.height end
-    end
-  end
-
-  table.remove(p.layout_clients, remove_idx)
-
-  if client_count == 2 then
-    if p.parent then
-      p.layout_clients[1].parent = p.parent
-    else
-      log("OJHOJHOHOHOHOH")
-    end
-  end
   
-  if #p.layout_clients == 0 and p ~= s then
-    _M.del_client(p)
-  end
-end
------------------------------------------
-local function place_client(c)
-  log("WA", je(c.workarea))
-  c:geometry(c.workarea)
-end
-
-local function arrange_parent(p)
-  for i=1, #p.layout_clients do
-    local c = p.layout_clients[i]
-    if c.layout_clients and #c.layout_clients > 0 then
-      arrange_parent(c)
+  local idx
+  for i,v in ipairs(cls) do
+    if v == c then idx = i
     else
-      place_client(c)
-    end
-
-  end
-end
-
-
-local function arrange(s)
-  if not s.layout_clients then
-    return
-    --log("MISSING LAYOUT CLIENTS")
-  end
-  local cls = s.layout_clients
-  for i=1, #cls do
-    local c = cls[i]
-    if c.layout_clients and #c.layout_clients > 0 then
-      arrange_parent(c)
-    else
-      place_client(c)
+      local _wa = v.workarea
+      if o == "h" then
+        _wa.width = _wa.width + wd
+        _wa.x = sx
+        sx = sx + _wa.width
+      elseif o == "v" then
+        _wa.height = _wa.height + hd
+        _wa.y = sy
+        sy = sy + _wa.height
+      end
     end
   end
+  log("REMOVE LENGTH", #cls)
+  table.remove(cls, idx)
+  --log("WA 1", je(cls[1].workarea))
 end
 
--------------------------------------
+local function _move_parent(p, wd, hd)
+  local sx = p.workarea.x
+  local sy = p.workarea.y
+  for i,c in ipairs(p.layout_clients) do
+    local _wa = c.workarea
+    if p.orientation == "h" then
+      _wa.width = _wa.width - wd
+      _wa.x = sx
+      sx = sx + _wa.width
+    else
+      _wa.height = _wa.height - hd
+      _wa.y = sy
+      sy = sy + _wa.height
+    end
+    if c.layout_clients and #c.layout_clients > 0 then
+      _move_parent(c, 0,0)
+    end
+  end
+end
+-- adds client to the parent
+local function _add_client(c, p)
+  local cls = p.layout_clients
+  local _w, _h, wd, hd
+  if #cls > 0 then
+    _w = p.workarea.width / #cls 
+    _h = p.workarea.height / #cls
+    wd = _w / #cls + 1
+    hd = _h / #cls + 1
+  else 
+    _w = p.workarea.width
+    _h = p.workarea.height
+    wd = 0
+    hd = 0
+  end
+  table.insert(cls, c)
+  c.parent = p
+  local o = p.orientation
+  local sx = p.workarea.x
+  local sy = p.workarea.y
+  
+  c.workarea.height = (o=="h") and p.workarea.height or _h
+  c.workarea.width = (o=="v") and p.workarea.width or _w
+  c.workarea.y = sy
+  c.workarea.x = sx
+  
+  _move_parent(p, wd, hd)
+end
 
-function _M.move_focus(dir)
+
+local function move_to_parent(c, np)
+  _remove_client(c)
+  _add_client(c,np)
+  arrange(awful.screen.focused())
+end
+
+function _M.del_client(c)
+  local p = c.parent
+  local cls = p.layout_clients
+  _remove_client(c)
+  if #cls == 0 then
+    if p.parent then
+      --move_to_parent(cls[1], p.parent)
+    end
+    if p ~= awful.screen.focused() then
+      _M.del_client(p)
+    end
+  end
+end
+
+local function find_dir(dir)
   local s = awful.screen.focused()
   local c = client.focus
+  local clients = s.clients
 
   local x = c.workarea.x
   local y = c.workarea.y
   local w = c.workarea.width
   local h = c.workarea.height
+
   if dir == "W" then
-    for i,v in ipairs(s.layout_clients) do
+    for i,v in ipairs(clients) do
       if v.workarea.x + v.workarea.width == x then
-        client.focus = v
+        return v
       end
     end
   elseif dir == "E" then
-    for i,v in ipairs(s.layout_clients) do
+    for i,v in ipairs(clients) do
       if v.workarea.x == x + w then
-        client.focus = v
+        return v
       end
     end
   elseif dir == "N" then
-    for i,v in ipairs(s.layout_clients) do
+    for i,v in ipairs(clients) do
       if v.workarea.y + v.workarea.height == y then
-        client.focus = v
+        return v
       end
     end
   elseif dir == "S" then
-    for i,v in ipairs(s.layout_clients) do
+    for i,v in ipairs(clients) do
       if v.workarea.y == y + h then
-        client.focus = v
+        return v
       end
     end
   end
 end
 
+function _M.move_focus(dir)
+  local c = find_dir(dir)
+  if c then
+    client.focus = c
+  end
+end
 
-
-function _M.move_client(dir) -- dir = [N,W,S,E]
-  local s = awful.screen.focused()
+function _M.move_client(dir)
   local c = client.focus
-  local p = c.parent
+  local n = find_dir(dir)
+  if not n then return end
 
-  if p.orientation == "h" then
-    -- move east and west within the parent
-    for i,v in ipairs(p.layout_clients) do
-      if v == c then
-        log("INDEX", i)
-        if dir == "W" and i > 1 then
-          log("HELLO")
-          local tmp = p.layout_clients[i-1]
-          local tmp_wa = tmp.workarea
-          tmp.workarea = c.workarea
-          c.workarea = tmp_wa
-          p.layout_clients[i-1] = c
-          p.layout_clients[i] = tmp
-        elseif dir == "W" and i == 1 then
-          -- Move to other parent if applicable 
-        end
+  if n.parent == c.parent then -- move idx
+    local cls = c.parent.layout_clients
+    local c_idx, n_idx
+    for i,v in ipairs(cls) do
+      if v == c then c_idx = i
+      elseif v == n then n_idx = i end
+    end
+    cls[c_idx] = n
+    cls[n_idx] = c
+    local x0, y0
+    if c_idx < n_idx then
+      if c.parent.orientation == "h" then
+        x0 = c.workarea.x
+        n.workarea.x = x0
+        c.workarea.x = x0 + n.workarea.width
+      else
+        y0 = c.workarea.y
+        n.workarea.y = y0
+        c.workarea.y = y0 + n.workarea.height
       end
+    else
+      if c.parent.orientation == "h" then
+        x0 = n.workarea.x
+        c.workarea.x = x0
+        n.workarea.x = x0 + c.workarea.width
+      else
+        y0 = n.workarea.y
+        c.workarea.y = y0
+        n.workarea.y = y0 + c.workarea.height
+      end
+    end
+    place_client(c)
+    place_client(n)
+  else
+    if c.parent.parent then
+      move_to_parent(c, c.parent.parent)
     end
   end
 end
+
+--function _M.split(o)
+  --if o ~= "v" and o ~= "h" then 
+    --print("Layout.split invalid orientation " .. o)
+  --end
+  --local s = awful.screen.focused()
+  --local f = client.focus
+  --if not f then
+    --s.orientation = o
+    --return
+  --end
+  --local parent = f.parent
+  --settings.split_parent = true
+  ----parent.orientation = orientation
+  --local new_parent = {
+    --workarea = f.workarea,
+    --layout_clients = {},
+    --orientation = o,
+    --parent = f.parent
+  --}
+  --move_to_parent(f, new_parent)
+  ----_remove_client(f)
+  --log("REMOVED")
+  --_add_client(new_parent, parent)
+  ----_add_client(f, new_parent)
+  ----for i,v in ipairs(parent.layout_clients) do
+    ----if v == f then
+      ----parent.layout_clients[i] = new_parent
+      ----break
+    ----end
+  ----end
+  ----f.parent = new_parent
+  ----arrange(s)
+--end
 
 function _M.split(orientation)
   if orientation ~= "v" and orientation ~= "h" then 
@@ -267,6 +372,7 @@ function _M.split(orientation)
   local s = awful.screen.focused()
   local focused = client.focus
   if not focused then
+    log("_M.split() -- THIS IS NOT SUPPOSED TO HAPPEN")
     s.orientation = orientation
     return
   end

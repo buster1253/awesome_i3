@@ -5,18 +5,12 @@ local hotkeys_popup = require("awful.hotkeys_popup").widget
 local layout = require "i3_layout"
 
 -- TODO move this to another module
-local def = "dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify"
-		.." /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player."
+local def = [[dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify 
+/org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.]]
 local spotify = {
-	toggle = function()
-		os.execute(def.."PlayPause")
-	end,
-	prev = function()
-		os.execute(def.."Previous")
-	end,
-	next = function()
-		os.execute(def.."Next")
-	end
+	toggle = function() os.execute(def.."PlayPause") end,
+  prev = function() os.execute(def.."Previous") end,
+	next = function() os.execute(def.."Next") end
 }
 
 local globalkeys = gears.table.join(
@@ -36,6 +30,15 @@ local globalkeys = gears.table.join(
 	awful.key({ modkey }, "j", function() layout.move_focus("S") end,
 			{description = "List workspaces", group = "workspaces"}),
 	awful.key({ modkey, "Shift"}, "s", function() layout.serialize() end,
+			{description = "List workspaces", group = "workspaces"}),
+
+	awful.key({ modkey, "Shift" }, "h", function() layout.move_client("W") end,
+			{description = "List workspaces", group = "workspaces"}),
+	awful.key({ modkey, "Shift" }, "l", function() layout.move_client("E") end,
+			{description = "List workspaces", group = "workspaces"}),
+	awful.key({ modkey, "Shift" }, "k", function() layout.move_client("N") end,
+			{description = "List workspaces", group = "workspaces"}),
+	awful.key({ modkey, "Shift" }, "j", function() layout.move_client("S") end,
 			{description = "List workspaces", group = "workspaces"}),
 
 	awful.key({ modkey }, "a", function()
