@@ -142,6 +142,28 @@ function _M.new_client(c, f)
   client.focus = c
 end
 
+local function _resize_parent(p, wd, hd)
+  log("RESIZE:", wd, hd)
+  local sx = p.workarea.x
+  local sy = p.workarea.y
+  for i,c in ipairs(p.layout_clients) do
+    local _wa = c.workarea
+    if p.orientation == "h" then
+      _wa.width = _wa.width - wd
+      _wa.x = sx
+      _wa.y = sy
+      sx = sx + _wa.width
+    else
+      _wa.height = _wa.height - hd
+      _wa.y = sy
+      _wa.x = sx
+      sy = sy + _wa.height
+    end
+    if c.layout_clients and #c.layout_clients > 0 then
+      _resize_parent(c, wd, hd)
+    end
+  end
+end
 -- removes the client from the parent
 local function _remove_client(c) 
   local p = c.parent
@@ -173,34 +195,16 @@ local function _remove_client(c)
   --log("WA 1", je(cls[1].workarea))
 end
 
-local function _move_parent(p, wd, hd)
-  local sx = p.workarea.x
-  local sy = p.workarea.y
-  for i,c in ipairs(p.layout_clients) do
-    local _wa = c.workarea
-    if p.orientation == "h" then
-      _wa.width = _wa.width - wd
-      _wa.x = sx
-      sx = sx + _wa.width
-    else
-      _wa.height = _wa.height - hd
-      _wa.y = sy
-      sy = sy + _wa.height
-    end
-    if c.layout_clients and #c.layout_clients > 0 then
-      _move_parent(c, 0,0)
-    end
-  end
-end
 -- adds client to the parent
 local function _add_client(c, p)
+  log("ADDING CLIENT")
   local cls = p.layout_clients
   local _w, _h, wd, hd
   if #cls > 0 then
-    _w = p.workarea.width / #cls 
-    _h = p.workarea.height / #cls
-    wd = _w / #cls + 1
-    hd = _h / #cls + 1
+    _w = p.workarea.width / (#cls)
+    _h = p.workarea.height / (#cls)
+    wd = _w / (#cls + 1)
+    hd = _h / (#cls + 1)
   else 
     _w = p.workarea.width
     _h = p.workarea.height
@@ -215,10 +219,10 @@ local function _add_client(c, p)
   
   c.workarea.height = (o=="h") and p.workarea.height or _h
   c.workarea.width = (o=="v") and p.workarea.width or _w
-  c.workarea.y = sy
-  c.workarea.x = sx
+  --c.workarea.y = sy
+  --c.workarea.x = sx
   
-  _move_parent(p, wd, hd)
+  _resize_parent(p, wd, hd)
 end
 
 
@@ -229,6 +233,7 @@ local function move_to_parent(c, np)
 end
 
 function _M.del_client(c)
+  log("DEL CLIENT")
   local p = c.parent
   local cls = p.layout_clients
   _remove_client(c)
@@ -287,6 +292,7 @@ function _M.move_focus(dir)
 end
 
 function _M.move_client(dir)
+  log("MOVE CLIENT")
   local c = client.focus
   local n = find_dir(dir)
   if not n then return end
@@ -327,6 +333,9 @@ function _M.move_client(dir)
   else
     if c.parent.parent then
       move_to_parent(c, c.parent.parent)
+      for i,v in ipairs(c.parent.layout_clients) do
+        log("WA"..i, je(v.workarea))
+      end
     end
   end
 end
