@@ -38,6 +38,12 @@ local settings = {
   split_parent = true
 }
 
+local function _get_idx(c, a)
+  for i,v in ipairs(a) do
+    if v == c then return i end
+  end
+end
+
 -----------------------------------------
 local function place_client(c)
   --log("WA", je(c.workarea))
@@ -141,92 +147,69 @@ function _M.new_client(c, f)
   end
   client.focus = c
 end
-
-local function _resize_parent(p, wd, hd)
-  log("RESIZE:", wd, hd)
+local move_to_parent
+local function _resize_parent(p, w, h)
+  log("RESIZE:", w, h)
+  local wd = w / #p.layout_clients
+  local hd = h / #p.layout_clients
   local sx = p.workarea.x
   local sy = p.workarea.y
   for i,c in ipairs(p.layout_clients) do
     local _wa = c.workarea
+    log("WA_pre", je(_wa))
     if p.orientation == "h" then
-      _wa.width = _wa.width - wd
+      _wa.width = _wa.width + wd
       _wa.x = sx
       _wa.y = sy
+      _wa.height = p.workarea.height
       sx = sx + _wa.width
     else
-      _wa.height = _wa.height - hd
+      _wa.height = _wa.height + hd
       _wa.y = sy
       _wa.x = sx
+      _wa.width = p.workarea.width
       sy = sy + _wa.height
     end
     if c.layout_clients and #c.layout_clients > 0 then
       _resize_parent(c, wd, hd)
     end
+    log("WA"..i, je(_wa))
   end
 end
+
 -- removes the client from the parent
 local function _remove_client(c) 
   local p = c.parent
-  local cls = p.layout_clients
-  local wd = c.workarea.width / (#cls - 1)
-  local hd = c.workarea.height / (#cls - 1)
-  local sx = p.workarea.x
-  local sy = p.workarea.y
-  local o = p.orientation
-  
-  local idx
-  for i,v in ipairs(cls) do
-    if v == c then idx = i
-    else
-      local _wa = v.workarea
-      if o == "h" then
-        _wa.width = _wa.width + wd
-        _wa.x = sx
-        sx = sx + _wa.width
-      elseif o == "v" then
-        _wa.height = _wa.height + hd
-        _wa.y = sy
-        sy = sy + _wa.height
-      end
-    end
+  local w = c.workarea.width
+  local h = c.workarea.height
+  table.remove(p.layout_clients, _get_idx(c, p.layout_clients))
+  _resize_parent(p, w, h)
+  if #p.layout_clients == 0 and p ~= awful.screen.focused() then
+    _remove_client(p)
   end
-  log("REMOVE LENGTH", #cls)
-  table.remove(cls, idx)
-  --log("WA 1", je(cls[1].workarea))
 end
 
 -- adds client to the parent
 local function _add_client(c, p)
   log("ADDING CLIENT")
   local cls = p.layout_clients
-  local _w, _h, wd, hd
+  local _w = p.workarea.width
+  local _h = p.workarea.height
   if #cls > 0 then
-    _w = p.workarea.width / (#cls)
-    _h = p.workarea.height / (#cls)
-    wd = _w / (#cls + 1)
-    hd = _h / (#cls + 1)
-  else 
-    _w = p.workarea.width
-    _h = p.workarea.height
-    wd = 0
-    hd = 0
+    _w = _w / #cls
+    _h = _h / #cls
   end
   table.insert(cls, c)
   c.parent = p
-  local o = p.orientation
-  local sx = p.workarea.x
-  local sy = p.workarea.y
-  
-  c.workarea.height = (o=="h") and p.workarea.height or _h
-  c.workarea.width = (o=="v") and p.workarea.width or _w
-  --c.workarea.y = sy
-  --c.workarea.x = sx
-  
-  _resize_parent(p, wd, hd)
+  if p.orientation == "h" then
+    _resize_parent(p, -1*_w, 0)
+  else
+    _resize_parent(p, 0, -1*_h)
+  end
 end
 
 
-local function move_to_parent(c, np)
+function move_to_parent(c, np)
   _remove_client(c)
   _add_client(c,np)
   arrange(awful.screen.focused())
@@ -333,9 +316,6 @@ function _M.move_client(dir)
   else
     if c.parent.parent then
       move_to_parent(c, c.parent.parent)
-      for i,v in ipairs(c.parent.layout_clients) do
-        log("WA"..i, je(v.workarea))
-      end
     end
   end
 end
