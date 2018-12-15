@@ -59,7 +59,7 @@ end
 beautiful.init("~/.config/awesome/themes/theme.lua")
 
 -- This is used later as the default terminal and editor to run.
-terminal = "terminology"
+terminal = "alacritty"
 --editor = os.getenv("EDITOR") or "editor"
 editor = "vim -u $MYVIMRC"
 editor_cmd = terminal .. " -e " .. editor
