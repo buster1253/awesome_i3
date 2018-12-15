@@ -10,10 +10,6 @@ local je = require "cjson".encode
 local awful = require "awful"
 local nau = require "naughty"
 local note = nau.notify
-local parent = require "layout_parent"
-
--- REQUIERED
-  --log("HISTORY???", awful.client.focus.history.is_enabled())
 
 local function table_length(t) 
 	local c = 0
@@ -78,13 +74,13 @@ end
 
 -------------------------------------
 function _M.new_client(c, f)
+  log("new_client")
   local s = awful.screen.focused()
   if not s.layout_clients then s.layout_clients = {} end
   awful.client.focus.history.previous() -- awesome moves the focus before calling arrange
   local focused = f or client.focus
 
-  -- if the client is the only one, screen is set as parent
-  if #s.clients == 1 then
+  if #s.clients == 1 then -- if first client use screen as parent
     local wa = s.workarea
     c.workarea = {
       width = wa.width,
@@ -99,7 +95,6 @@ function _M.new_client(c, f)
     return
   end
  
-  -- should always be true if there's more than one client
   if focused then
     local p
     if settings.split_parent then
@@ -147,16 +142,15 @@ function _M.new_client(c, f)
   end
   client.focus = c
 end
-local move_to_parent
+
 local function _resize_parent(p, w, h)
-  log("RESIZE:", w, h)
+  log("_resize_parent", "w: " .. w, "h: " .. h)
   local wd = w / #p.layout_clients
   local hd = h / #p.layout_clients
   local sx = p.workarea.x
   local sy = p.workarea.y
   for i,c in ipairs(p.layout_clients) do
     local _wa = c.workarea
-    log("WA_pre", je(_wa))
     if p.orientation == "h" then
       _wa.width = _wa.width + wd
       _wa.x = sx
@@ -173,25 +167,42 @@ local function _resize_parent(p, w, h)
     if c.layout_clients and #c.layout_clients > 0 then
       _resize_parent(c, wd, hd)
     end
-    log("WA"..i, je(_wa))
+  end
+  local t
+  for i,v in ipairs(p.layout_clients) do
+    if p.orientation == "h" then
+      t = t + v.workarea.width
+    else
+      t = t + v.workarea.height
+    end
+  end
+  if p.orientation == "h" then
+    if t ~= v.workarea.width then
+      log("FAIL")
+    end
   end
 end
 
 -- removes the client from the parent
-local function _remove_client(c) 
+local function _remove_client(c, f) 
+  log("_remove_client")
   local p = c.parent
   local w = c.workarea.width
   local h = c.workarea.height
   table.remove(p.layout_clients, _get_idx(c, p.layout_clients))
-  _resize_parent(p, w, h)
+  -- if last, then dont resize
+  if not f then 
+    _resize_parent(p, w, h)
+  end
   if #p.layout_clients == 0 and p ~= awful.screen.focused() then
-    _remove_client(p)
+    log("removing parent")
+    _remove_client(p, true)
   end
 end
 
 -- adds client to the parent
-local function _add_client(c, p)
-  log("ADDING CLIENT")
+local function _add_client(c, p, pos)
+  log("_add_client", "pos: " .. pos)
   local cls = p.layout_clients
   local _w = p.workarea.width
   local _h = p.workarea.height
@@ -199,8 +210,9 @@ local function _add_client(c, p)
     _w = _w / #cls
     _h = _h / #cls
   end
-  table.insert(cls, c)
+  table.insert(cls, pos or #cls, c)
   c.parent = p
+  log("POS", pos);
   if p.orientation == "h" then
     _resize_parent(p, -1*_w, 0)
   else
@@ -208,10 +220,9 @@ local function _add_client(c, p)
   end
 end
 
-
-function move_to_parent(c, np)
+function move_to_parent(c, np, pos)
   _remove_client(c)
-  _add_client(c,np)
+  _add_client(c, np, pos)
   arrange(awful.screen.focused())
 end
 
@@ -231,92 +242,107 @@ function _M.del_client(c)
 end
 
 local function find_dir(dir)
+  log("find_dir")
   local s = awful.screen.focused()
   local c = client.focus
   local clients = s.clients
 
-  local x = c.workarea.x
-  local y = c.workarea.y
-  local w = c.workarea.width
-  local h = c.workarea.height
-
-  if dir == "W" then
-    for i,v in ipairs(clients) do
-      if v.workarea.x + v.workarea.width == x then
-        return v
+  local x,y,w,h = c.workarea.x, c.workarea.y, 
+                  c.workarea.width, c.workarea.height
+  local matches = {}
+  for i,v in ipairs(clients) do
+    if dir == "W" then
+      if v.workarea.x + v.workarea.width == x then 
+        table.insert(matches, v)
+        --return v 
+        end
+    elseif dir == "E" then
+      if v.workarea.x == x + w then 
+        table.insert(matches, v)
+        --return v 
+        end
+    elseif dir == "N" then
+      if v.workarea.y + v.workarea.height == y then 
+        table.insert(matches, v)
+        --return v 
+        end
+    elseif dir == "S" then
+      if v.workarea.y == y + h then 
+        table.insert(matches, v)
+        --return v 
+        end
+    end
+  end
+  if #matches > 1 then 
+    local best, best_diff
+    for i,m in ipairs(matches) do
+      local diff
+      if dir == "N" or dir == "S" then
+        diff = math.abs(m.y - y)
+      else
+        diff = math.abs(m.x - x)
+      end
+      if i == 1 or diff < best_diff then 
+        best = m 
+        best_diff = diff
       end
     end
-  elseif dir == "E" then
-    for i,v in ipairs(clients) do
-      if v.workarea.x == x + w then
-        return v
-      end
-    end
-  elseif dir == "N" then
-    for i,v in ipairs(clients) do
-      if v.workarea.y + v.workarea.height == y then
-        return v
-      end
-    end
-  elseif dir == "S" then
-    for i,v in ipairs(clients) do
-      if v.workarea.y == y + h then
-        return v
-      end
-    end
+    return best
+  else
+    return matches[1]
   end
 end
 
 function _M.move_focus(dir)
   local c = find_dir(dir)
-  if c then
-    client.focus = c
+  if c then client.focus = c end
+end
+
+local function swap_clients(c1, c2, arr)
+  log("swap_clients")
+  local idx1, idx2
+  for i,v in ipairs(arr) do
+    if v == c1 then idx1 = i
+    elseif v == c2 then idx2 = i end
   end
+  arr[idx1] = c2
+  arr[idx2] = c1
+
+  local tmp = c1.workarea
+
+  c1.workarea = c2.workarea
+  c2.workarea = tmp
 end
 
 function _M.move_client(dir)
-  log("MOVE CLIENT")
+  log("move_client")
   local c = client.focus
   local n = find_dir(dir)
-  if not n then return end
 
-  if n.parent == c.parent then -- move idx
+  if not n then return end -- TODO check if screen in dir
+
+  if n.parent == c.parent then -- move inside 
     local cls = c.parent.layout_clients
-    local c_idx, n_idx
-    for i,v in ipairs(cls) do
-      if v == c then c_idx = i
-      elseif v == n then n_idx = i end
-    end
-    cls[c_idx] = n
-    cls[n_idx] = c
-    local x0, y0
-    if c_idx < n_idx then
-      if c.parent.orientation == "h" then
-        x0 = c.workarea.x
-        n.workarea.x = x0
-        c.workarea.x = x0 + n.workarea.width
-      else
-        y0 = c.workarea.y
-        n.workarea.y = y0
-        c.workarea.y = y0 + n.workarea.height
-      end
-    else
-      if c.parent.orientation == "h" then
-        x0 = n.workarea.x
-        c.workarea.x = x0
-        n.workarea.x = x0 + c.workarea.width
-      else
-        y0 = n.workarea.y
-        c.workarea.y = y0
-        n.workarea.y = y0 + c.workarea.height
-      end
-    end
+    swap_clients(c, n, cls)
     place_client(c)
     place_client(n)
   else
-    if c.parent.parent then
-      move_to_parent(c, c.parent.parent)
+    --[[
+    move client from parent to parents parent
+    --]]
+    if c.parent.parent then -- move up one level
+      local pos = _get_idx(c.parent, c.parent.parent.layout_clients)
+      if dir == "E" or dir == "S" then
+        pos = pos + 1
+      end
     end
+    --if c.parent.parent then
+      --local pos = _get_idx(c.parent, c.parent.parent.layout_clients)
+      --if dir == "E" or dir == "S" then
+        --pos = pos + 1
+      --end
+      --move_to_parent(c, c.parent.parent, pos)
+    --end
   end
 end
 
