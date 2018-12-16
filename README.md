@@ -1,5 +1,12 @@
-# Usage
+# Features
 
+- workspaces
+- layout
+
+## Requirements
+- lua_cjson
+
+## Install
 ```lua
 -- require the module
 local workspaces = require "workspaces"
@@ -14,8 +21,6 @@ s.myworkspacename = wibox.widget{
 -- after screen "connect" signal
 workspaces.init()
 ```
-
-# Adding keybindings:
 
 ## Change workspace:
 ```lua
@@ -32,28 +37,16 @@ awful.prompt.run {
 }
 ```
 
-## list workspaces
 
-```lua
-workspace:list_ws()
-```
+# Usage
 
-## change tag:
-
-```lua
-awful.key({ modkey }, "#" .. i + 9, 
-	function() workspace:view_tag(i) end,
-```
-
-## move client to tag
-
-```lua
-awful.key({ modkey, "Shift" }, "#" .. i + 9,
-	function() workspace:move_client_to_tag(i) end,
-```
-
+command | description
+--------|------------
+list_ws()| displays current workspaces using naughtify
+view_tag(i)| Goto or create tag i
+move_client_to_tag(i)| Moves focused client to tag i
 
 # TODO
 
-- [] move clients between workspaces
-- [] move tags between workspaces???
+- Global tag: shared between all workspaces
+- serializing: keep setup post reload

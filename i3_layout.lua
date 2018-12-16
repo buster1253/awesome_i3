@@ -58,7 +58,6 @@ local function arrange_parent(p)
   end
 end
 
-
 local function arrange(s)
   if not s.layout_clients then return end
   local cls = s.layout_clients
@@ -149,6 +148,8 @@ local function _resize_parent(p, w, h)
   local hd = h / #p.layout_clients
   local sx = p.workarea.x
   local sy = p.workarea.y
+  log("clients:" .. #p.layout_clients)
+
   for i,c in ipairs(p.layout_clients) do
     local _wa = c.workarea
     if p.orientation == "h" then
@@ -157,6 +158,7 @@ local function _resize_parent(p, w, h)
       _wa.y = sy
       _wa.height = p.workarea.height
       sx = sx + _wa.width
+      log("sx" .. i .. ": " .. sx)
     else
       _wa.height = _wa.height + hd
       _wa.y = sy
@@ -168,6 +170,7 @@ local function _resize_parent(p, w, h)
       _resize_parent(c, wd, hd)
     end
   end
+
   local t = 0
   for i,v in ipairs(p.layout_clients) do
     if p.orientation == "h" then
@@ -176,6 +179,7 @@ local function _resize_parent(p, w, h)
       t = t + v.workarea.height
     end
   end
+
   if p.orientation == "h" then
     if t ~= p.workarea.width then
       log("FAIL")
@@ -184,38 +188,37 @@ local function _resize_parent(p, w, h)
 end
 
 -- removes the client from the parent
-local function _remove_client(c, f) 
-  log("_remove_client")
+local function _remove_client(c) 
   local p = c.parent
   local w = c.workarea.width
   local h = c.workarea.height
-  table.remove(p.layout_clients, _get_idx(c, p.layout_clients))
-  -- if last, then dont resize
-  if f then 
-    log("_remove_client no resize")
-    return 
-  end
-  _resize_parent(p, w, h)
+  local idx = _get_idx(c, p.layout_clients)
+
+  table.remove(p.layout_clients, idx)
   if #p.layout_clients == 1 and p ~= awful.screen.focused() then
-    move_to_parent(o.layout_clients[1], p.parent.parent, _get_idx(p.parent, p.parent.layout_clients))
-  end
-    --_remove_client(p, true)
+    local pos = _get_idx(p, p.parent.layout_clients)
+    local cl = p.layout_clients[1]
+    cl.workarea = p.workarea
+    p.parent.layout_clients[pos] = cl
+    cl.parent = p.parent
+  else
+    _resize_parent(p, w, h)
   end
 end
 
 -- adds client to the parent
 local function _add_client(c, p, pos)
-  log("_add_client", "pos: " .. pos)
   local cls = p.layout_clients
+  log("CLIENTS:", #cls)
+  pos = pos or cls
   local _w = p.workarea.width
   local _h = p.workarea.height
   if #cls > 0 then
     _w = _w / #cls
     _h = _h / #cls
   end
-  table.insert(cls, pos or #cls, c)
+  table.insert(cls, pos, c)
   c.parent = p
-  log("POS", pos);
   if p.orientation == "h" then
     _resize_parent(p, -1*_w, 0)
   else
@@ -229,71 +232,62 @@ function move_to_parent(c, np, pos)
   arrange(awful.screen.focused())
 end
 
-function _M.del_client(c)
-  log("DEL CLIENT")
-  local p = c.parent
-  local cls = p.layout_clients
-  _remove_client(c)
-  if #cls == 0 then
-    if p.parent then
-      --move_to_parent(cls[1], p.parent)
-    end
-    if p ~= awful.screen.focused() then
-      _M.del_client(p)
-    end
+-- shared pixels between two clients
+local function shared_border(p1,p2,c1,c2)
+  if c2 < p1 or c1 > p2 then
+    return 0
+  else
+   if c1 < p1 then c1 = p1 end
+   if c2 > p2 then c2 = p2 end
+   return (c2 - c1)
   end
 end
 
 local function find_dir(dir)
-  log("find_dir")
   local s = awful.screen.focused()
   local c = client.focus
   local clients = s.clients
 
   local x,y,w,h = c.workarea.x, c.workarea.y, 
                   c.workarea.width, c.workarea.height
-  local matches = {}
+
+  local best, shared, best_shared = nil, 0, 0
+  local p1, p2, c1, c2
+  if dir == "E" or dir == "W" then
+    p1, p2 = y, y+h
+  else
+    p1, p2 = x, x+w
+  end
+
   for i,v in ipairs(clients) do
     if dir == "W" then
       if v.workarea.x + v.workarea.width == x then 
-        table.insert(matches, v)
-        --return v 
-        end
+        c1 = v.workarea.y
+        c2 = c1 + v.workarea.width
+      end
     elseif dir == "E" then
       if v.workarea.x == x + w then 
-        table.insert(matches, v)
-        --return v 
-        end
+        c1 = v.workarea.y
+        c2 = c1 + v.workarea.width
+      end
     elseif dir == "N" then
       if v.workarea.y + v.workarea.height == y then 
-        table.insert(matches, v)
-        --return v 
-        end
+        c1 = v.workarea.x
+        c2 = c1 + v.workarea.height
+      end
     elseif dir == "S" then
       if v.workarea.y == y + h then 
-        table.insert(matches, v)
-        --return v 
-        end
-    end
-  end
-  if #matches > 1 then 
-    local best, best_diff
-    for i,m in ipairs(matches) do
-      local diff
-      if dir == "N" or dir == "S" then
-        diff = math.abs(m.y - y)
-      else
-        diff = math.abs(m.x - x)
-      end
-      if i == 1 or diff < best_diff then 
-        best = m 
-        best_diff = diff
+        c1 = v.workarea.x
+        c2 = c1 + v.workarea.height
       end
     end
-    return best
-  else
-    return matches[1]
+    shared = c1 and c2 and shared_border(p1,p2,c1,c2) or 0
+    if shared > best_shared then
+      best = v
+      best_shared = shared
+    end
   end
+  return best
 end
 
 function _M.move_focus(dir)
@@ -318,29 +312,20 @@ local function swap_clients(c1, c2, arr)
 end
 
 function _M.move_client(dir)
-  log("move_client")
   local c = client.focus
   local n = find_dir(dir)
+  local p = c.parent
 
   if not n then return end -- TODO check if screen in dir
 
   if n.parent == c.parent then -- move inside 
-    local cls = c.parent.layout_clients
+    local cls = p.layout_clients
     swap_clients(c, n, cls)
     place_client(c)
     place_client(n)
   else
-    --[[
-    move client from parent to parents parent
-    --]]
-    --if c.parent.parent then -- move up one level
-      --local pos = _get_idx(c.parent, c.parent.parent.layout_clients)
-      --if dir == "E" or dir == "S" then
-        --pos = pos + 1
-      --end
-    --end
-    if c.parent.parent then
-      local pos = _get_idx(c.parent, c.parent.parent.layout_clients)
+    if p.parent then
+      local pos = _get_idx(p, p.parent.layout_clients)
       if dir == "E" or dir == "S" then
         pos = pos + 1
       end
@@ -349,39 +334,19 @@ function _M.move_client(dir)
   end
 end
 
---function _M.split(o)
-  --if o ~= "v" and o ~= "h" then 
-    --print("Layout.split invalid orientation " .. o)
-  --end
-  --local s = awful.screen.focused()
-  --local f = client.focus
-  --if not f then
-    --s.orientation = o
-    --return
-  --end
-  --local parent = f.parent
-  --settings.split_parent = true
-  ----parent.orientation = orientation
-  --local new_parent = {
-    --workarea = f.workarea,
-    --layout_clients = {},
-    --orientation = o,
-    --parent = f.parent
-  --}
-  --move_to_parent(f, new_parent)
-  ----_remove_client(f)
-  --log("REMOVED")
-  --_add_client(new_parent, parent)
-  ----_add_client(f, new_parent)
-  ----for i,v in ipairs(parent.layout_clients) do
-    ----if v == f then
-      ----parent.layout_clients[i] = new_parent
-      ----break
-    ----end
-  ----end
-  ----f.parent = new_parent
-  ----arrange(s)
---end
+function _M.del_client(c)
+  local p = c.parent
+  local cls = p.layout_clients
+  _remove_client(c)
+  if #cls == 0 then
+    if p.parent then
+      --move_to_parent(cls[1], p.parent)
+    end
+    if p ~= awful.screen.focused() then
+      _M.del_client(p)
+    end
+  end
+end
 
 function _M.split(orientation)
   if orientation ~= "v" and orientation ~= "h" then 
@@ -454,21 +419,24 @@ local function del_client(c)
   arrange(c.screen)
 end
 
-local function arrange_tag(t) 
+local function arrange_tag(t)
+  log(c)
   arrange(t.screen)
 end
 
-
---capi.tag.connect_signal("property::master_width_factor", log_shit)
---capi.tag.connect_signal("property::master_count", log_shit)
---capi.tag.connect_signal("property::column_count", log_shit)
---capi.tag.connect_signal("property::layout", log_shit)
---capi.tag.connect_signal("property::windowfact", log_shit)
---capi.tag.connect_signal("property::selected", log_shit)
---capi.tag.connect_signal("property::activated", log_shit)
---capi.tag.connect_signal("property::useless_gap", log_shit)
---capi.tag.connect_signal("property::master_fill_policy", log_shit)
-capi.tag.connect_signal("tagged", arrange_tag)
+capi.tag.connect_signal("property::master_width_factor", function() log("master_width_factor")end)
+capi.tag.connect_signal("property::master_count", function() log("master_count")end)
+capi.tag.connect_signal("property::column_count", function() log("column_count")end)
+capi.tag.connect_signal("property::layout", arrange_tag)
+capi.tag.connect_signal("property::windowfact", function() log("windowfact")end)
+capi.tag.connect_signal("property::selected", function() log("selected")end)
+capi.tag.connect_signal("property::activated", function() log("activated")end)
+capi.tag.connect_signal("property::useless_gap", function() log("useless_gap")end)
+capi.tag.connect_signal("property::master_fill_policy", function() log("master_fill_policy")end)
+capi.tag.connect_signal("tagged", 
+  function(t) log("tagged") log("name" .. t.name) arrange_tag(t)
+end)
+capi.tag.connect_signal("untagged", function()log("untagged")end)
 
 capi.client.connect_signal("request::geometry", function(c, cont, ad)
   note{text="Connect"}
@@ -510,8 +478,6 @@ local function serialize_parent(p)
     end
   end
 end
-
-
 
 function _M.serialize()
   local file = io.open("/tmp/layout_serial.lua", "w")
