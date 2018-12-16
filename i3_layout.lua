@@ -168,7 +168,7 @@ local function _resize_parent(p, w, h)
       _resize_parent(c, wd, hd)
     end
   end
-  local t
+  local t = 0
   for i,v in ipairs(p.layout_clients) do
     if p.orientation == "h" then
       t = t + v.workarea.width
@@ -177,7 +177,7 @@ local function _resize_parent(p, w, h)
     end
   end
   if p.orientation == "h" then
-    if t ~= v.workarea.width then
+    if t ~= p.workarea.width then
       log("FAIL")
     end
   end
@@ -191,12 +191,15 @@ local function _remove_client(c, f)
   local h = c.workarea.height
   table.remove(p.layout_clients, _get_idx(c, p.layout_clients))
   -- if last, then dont resize
-  if not f then 
-    _resize_parent(p, w, h)
+  if f then 
+    log("_remove_client no resize")
+    return 
   end
-  if #p.layout_clients == 0 and p ~= awful.screen.focused() then
-    log("removing parent")
-    _remove_client(p, true)
+  _resize_parent(p, w, h)
+  if #p.layout_clients == 1 and p ~= awful.screen.focused() then
+    move_to_parent(o.layout_clients[1], p.parent.parent, _get_idx(p.parent, p.parent.layout_clients))
+  end
+    --_remove_client(p, true)
   end
 end
 
@@ -330,19 +333,19 @@ function _M.move_client(dir)
     --[[
     move client from parent to parents parent
     --]]
-    if c.parent.parent then -- move up one level
-      local pos = _get_idx(c.parent, c.parent.parent.layout_clients)
-      if dir == "E" or dir == "S" then
-        pos = pos + 1
-      end
-    end
-    --if c.parent.parent then
+    --if c.parent.parent then -- move up one level
       --local pos = _get_idx(c.parent, c.parent.parent.layout_clients)
       --if dir == "E" or dir == "S" then
         --pos = pos + 1
       --end
-      --move_to_parent(c, c.parent.parent, pos)
     --end
+    if c.parent.parent then
+      local pos = _get_idx(c.parent, c.parent.parent.layout_clients)
+      if dir == "E" or dir == "S" then
+        pos = pos + 1
+      end
+      move_to_parent(c, c.parent.parent, pos)
+    end
   end
 end
 
