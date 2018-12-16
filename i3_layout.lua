@@ -10,6 +10,8 @@ local je = require "cjson".encode
 local awful = require "awful"
 local nau = require "naughty"
 local note = nau.notify
+local insert = table.insert
+local remove = table.remove
 
 local function table_length(t) 
 	local c = 0
@@ -71,33 +73,123 @@ local function arrange(s)
   end
 end
 
--------------------------------------
-function _M.new_client(c, f)
-  log("new_client")
-  local s = awful.screen.focused()
-  if not s.layout_clients then s.layout_clients = {} end
-  awful.client.focus.history.previous() -- awesome moves the focus before calling arrange
-  local focused = f or client.focus
+local function _resize_parent(p, w, h, ignore)
+  log("_resize_parent", "w: " .. w, "h: " .. h)
+  local wd = w / #p.layout_clients
+  local hd = h / #p.layout_clients
+  local sx = p.workarea.x
+  local sy = p.workarea.y
+  log("clients:" .. #p.layout_clients)
 
-  if #s.clients == 1 then -- if first client use screen as parent
-    local wa = s.workarea
+  for i,c in ipairs(p.layout_clients) do
+    local _wa = c.workarea
+    if i == ignore then
+      _wa.x = sx
+      _wa.y = sy
+      if p.orientation == "h" then sx = sx + _wa.width
+      else sy = sy + _wa.height end
+    else
+      if p.orientation == "h" then
+        _wa.width = _wa.width + wd
+        _wa.x = sx
+        _wa.y = sy
+        _wa.height = p.workarea.height
+        sx = sx + _wa.width
+        log("sx" .. i .. ": " .. sx)
+      else
+        _wa.height = _wa.height + hd
+        _wa.y = sy
+        _wa.x = sx
+        _wa.width = p.workarea.width
+        sy = sy + _wa.height
+      end
+      if c.layout_clients and #c.layout_clients > 0 then
+        _resize_parent(c, wd, hd)
+      end
+    end
+  end
+
+  local t = 0
+  for i,v in ipairs(p.layout_clients) do
+    if p.orientation == "h" then
+      t = t + v.workarea.width
+    else
+      t = t + v.workarea.height
+    end
+  end
+
+  if p.orientation == "h" then
+    if t ~= p.workarea.width then
+      log("FAIL")
+    end
+  end
+end
+-- adds client to the parent
+--[[
+Client:
+ - workarea
+ - parent
+--]]
+local function _add_client(c, p, pos)
+  local cls = p.layout_clients
+  pos = pos or #cls
+  local w = p.workarea.width
+  local h = p.workarea.height
+  if #cls > 0 then
+    w = wd / #cls
+    h = hd / #cls
+  end
+
+  insert(cls, pos, c)
+  c.parent = p
+  if p.orientation == "h" then
+    _resize_parent(p, -1*wd, 0, pos)
+  else
+    _resize_parent(p, 0, -1*hd, pos)
+  end
+end
+
+function move_to_parent(c, np, pos)
+  _remove_client(c)
+  _add_client(c, np, pos)
+  arrange(awful.screen.focused().selected_tag)
+end
+
+-------------------------------------
+-- DOING: 
+--   add optional tag argument
+function _M.new_client(c, focused, t)
+  local s
+  if t then
+    s = tag.screen
+  else
+    s = awful.screen.focused()
+    t = s.selected_tag
+  end
+
+  if not t.layout_clients then t.layout_clients = {} end
+  if not t.workarea then t.workarea = s.workarea end
+
+  if #t.layout_clients == 0 then -- first client: tag is parent
+    local wa = t.workarea
     c.workarea = {
       width = wa.width,
       height = wa.height,
       x = wa.x,
       y = wa.y,
     }
-    c.parent = s
-    s.orientation = s.orientation or settings.orientation
+    c.parent = t
+    t.orientation = t.orientation or settings.orientation
     client.focus = c
-    table.insert(s.layout_clients, c)
+    insert(t.layout_clients, c)
     return
-  end
- 
-  if focused then
+  else
+    awful.client.focus.history.previous() -- focus is already on new client
+    local focused = f or client.focus
+    if not focused then log("[ADD CLIENT]NO FOCUSED CLIENT") end
+
     local p
-    if settings.split_parent then
-      p = focused.parent
+    if settings.split_parent then p = focused.parent
     else
       p = {
         workarea = focused.workarea,
@@ -105,18 +197,14 @@ function _M.new_client(c, f)
         orientation = settings.orientation,
         parent = focused.parent
       }
-      for i,v in ipairs(focused.parent.layout_clients) do
-        if v == focused then
-          focused.parent.layout_clients[i] = p
-          break
-        end
-      end
+
+      local f_idx = _get_idx(focused, focused.parent.layout_clients)
+      focused.parent.layout_clients[f_idx] = p
       focused.parent = p
     end
 
     c.parent = p
-    table.insert(p.layout_clients, c)
-    --local p = focused.parent or s
+    insert(p.layout_clients, c)
     if p.orientation == "h" then
       local w = p.workarea.width / #p.layout_clients
       for i,c in ipairs(p.layout_clients) do
@@ -142,50 +230,7 @@ function _M.new_client(c, f)
   client.focus = c
 end
 
-local function _resize_parent(p, w, h)
-  log("_resize_parent", "w: " .. w, "h: " .. h)
-  local wd = w / #p.layout_clients
-  local hd = h / #p.layout_clients
-  local sx = p.workarea.x
-  local sy = p.workarea.y
-  log("clients:" .. #p.layout_clients)
 
-  for i,c in ipairs(p.layout_clients) do
-    local _wa = c.workarea
-    if p.orientation == "h" then
-      _wa.width = _wa.width + wd
-      _wa.x = sx
-      _wa.y = sy
-      _wa.height = p.workarea.height
-      sx = sx + _wa.width
-      log("sx" .. i .. ": " .. sx)
-    else
-      _wa.height = _wa.height + hd
-      _wa.y = sy
-      _wa.x = sx
-      _wa.width = p.workarea.width
-      sy = sy + _wa.height
-    end
-    if c.layout_clients and #c.layout_clients > 0 then
-      _resize_parent(c, wd, hd)
-    end
-  end
-
-  local t = 0
-  for i,v in ipairs(p.layout_clients) do
-    if p.orientation == "h" then
-      t = t + v.workarea.width
-    else
-      t = t + v.workarea.height
-    end
-  end
-
-  if p.orientation == "h" then
-    if t ~= p.workarea.width then
-      log("FAIL")
-    end
-  end
-end
 
 -- removes the client from the parent
 local function _remove_client(c) 
@@ -194,8 +239,8 @@ local function _remove_client(c)
   local h = c.workarea.height
   local idx = _get_idx(c, p.layout_clients)
 
-  table.remove(p.layout_clients, idx)
-  if #p.layout_clients == 1 and p ~= awful.screen.focused() then
+  remove(p.layout_clients, idx)
+  if #p.layout_clients == 1 and p ~= awful.screen.focused().selected_tag then
     local pos = _get_idx(p, p.parent.layout_clients)
     local cl = p.layout_clients[1]
     cl.workarea = p.workarea
@@ -206,31 +251,6 @@ local function _remove_client(c)
   end
 end
 
--- adds client to the parent
-local function _add_client(c, p, pos)
-  local cls = p.layout_clients
-  log("CLIENTS:", #cls)
-  pos = pos or cls
-  local _w = p.workarea.width
-  local _h = p.workarea.height
-  if #cls > 0 then
-    _w = _w / #cls
-    _h = _h / #cls
-  end
-  table.insert(cls, pos, c)
-  c.parent = p
-  if p.orientation == "h" then
-    _resize_parent(p, -1*_w, 0)
-  else
-    _resize_parent(p, 0, -1*_h)
-  end
-end
-
-function move_to_parent(c, np, pos)
-  _remove_client(c)
-  _add_client(c, np, pos)
-  arrange(awful.screen.focused())
-end
 
 -- shared pixels between two clients
 local function shared_border(p1,p2,c1,c2)
@@ -260,27 +280,36 @@ local function find_dir(dir)
   end
 
   for i,v in ipairs(clients) do
-    if dir == "W" then
-      if v.workarea.x + v.workarea.width == x then 
+    if (dir == "W" and v.workarea.x + v.workarea.width == x)
+      or (dir == "E" and v.workarea.x == x + w)  then
         c1 = v.workarea.y
         c2 = c1 + v.workarea.width
-      end
-    elseif dir == "E" then
-      if v.workarea.x == x + w then 
-        c1 = v.workarea.y
-        c2 = c1 + v.workarea.width
-      end
-    elseif dir == "N" then
-      if v.workarea.y + v.workarea.height == y then 
+    elseif (dir == "N" and v.workarea.y + v.workarea.height == y)
+      or (dir == "S" and v.workarea.y == y + h) then 
         c1 = v.workarea.x
         c2 = c1 + v.workarea.height
-      end
-    elseif dir == "S" then
-      if v.workarea.y == y + h then 
-        c1 = v.workarea.x
-        c2 = c1 + v.workarea.height
-      end
     end
+    --if dir == "W" and v.workarea.x + v.workarea.width == x then
+      --if v.workarea.x + v.workarea.width == x then 
+        --c1 = v.workarea.y
+        --c2 = c1 + v.workarea.width
+      --end
+    --elseif dir == "E" then
+      --if v.workarea.x == x + w then 
+        --c1 = v.workarea.y
+        --c2 = c1 + v.workarea.width
+      --end
+    --elseif dir == "N" then
+      --if v.workarea.y + v.workarea.height == y then 
+        --c1 = v.workarea.x
+        --c2 = c1 + v.workarea.height
+      --end
+    --elseif dir == "S" then
+      --if v.workarea.y == y + h then 
+        --c1 = v.workarea.x
+        --c2 = c1 + v.workarea.height
+      --end
+    --end
     shared = c1 and c2 and shared_border(p1,p2,c1,c2) or 0
     if shared > best_shared then
       best = v
@@ -292,7 +321,8 @@ end
 
 function _M.move_focus(dir)
   local c = find_dir(dir)
-  if c then client.focus = c end
+  if c then client.focus = c 
+  else log("no client") end
 end
 
 local function swap_clients(c1, c2, arr)
@@ -342,7 +372,7 @@ function _M.del_client(c)
     if p.parent then
       --move_to_parent(cls[1], p.parent)
     end
-    if p ~= awful.screen.focused() then
+    if p ~= awful.screen.focused().selected_tag then
       _M.del_client(p)
     end
   end
@@ -411,17 +441,17 @@ end
 
 local function new_client(c)
   _M.new_client(c)
-  arrange(c.screen)
+  arrange(c.screen.selected_tag)
 end
 
 local function del_client(c)
   _M.del_client(c)
-  arrange(c.screen)
+  arrange(c.screen.selected_tag)
 end
 
 local function arrange_tag(t)
   log(c)
-  arrange(t.screen)
+  arrange(t)
 end
 
 capi.tag.connect_signal("property::master_width_factor", function() log("master_width_factor")end)
