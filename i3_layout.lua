@@ -83,12 +83,12 @@ local function _resize_parent(p, w, h, ignore)
 
   for i,c in ipairs(p.layout_clients) do
     local _wa = c.workarea
-    if i == ignore then
-      _wa.x = sx
-      _wa.y = sy
-      if p.orientation == "h" then sx = sx + _wa.width
-      else sy = sy + _wa.height end
-    else
+    --if i == ignore then
+      --_wa.x = sx
+      --_wa.y = sy
+      --if p.orientation == "h" then sx = sx + _wa.width
+      --else sy = sy + _wa.height end
+    --else
       if p.orientation == "h" then
         _wa.width = _wa.width + wd
         _wa.x = sx
@@ -105,7 +105,7 @@ local function _resize_parent(p, w, h, ignore)
       end
       if c.layout_clients and #c.layout_clients > 0 then
         _resize_parent(c, wd, hd)
-      end
+      --end
     end
   end
 
@@ -136,8 +136,8 @@ local function _add_client(c, p, pos)
   local w = p.workarea.width
   local h = p.workarea.height
   if #cls > 0 then
-    w = wd / #cls
-    h = hd / #cls
+    wd = w / #cls
+    hd = h / #cls
   end
 
   insert(cls, pos, c)
@@ -146,6 +146,24 @@ local function _add_client(c, p, pos)
     _resize_parent(p, -1*wd, 0, pos)
   else
     _resize_parent(p, 0, -1*hd, pos)
+  end
+end
+-- removes the client from the parent
+local function _remove_client(c) 
+  local p = c.parent
+  local w = c.workarea.width
+  local h = c.workarea.height
+  local idx = _get_idx(c, p.layout_clients)
+
+  remove(p.layout_clients, idx)
+  if #p.layout_clients == 1 and p ~= awful.screen.focused().selected_tag then
+    local pos = _get_idx(p, p.parent.layout_clients)
+    local cl = p.layout_clients[1]
+    cl.workarea = p.workarea
+    p.parent.layout_clients[pos] = cl
+    cl.parent = p.parent
+  else
+    _resize_parent(p, w, h)
   end
 end
 
@@ -232,25 +250,6 @@ end
 
 
 
--- removes the client from the parent
-local function _remove_client(c) 
-  local p = c.parent
-  local w = c.workarea.width
-  local h = c.workarea.height
-  local idx = _get_idx(c, p.layout_clients)
-
-  remove(p.layout_clients, idx)
-  if #p.layout_clients == 1 and p ~= awful.screen.focused().selected_tag then
-    local pos = _get_idx(p, p.parent.layout_clients)
-    local cl = p.layout_clients[1]
-    cl.workarea = p.workarea
-    p.parent.layout_clients[pos] = cl
-    cl.parent = p.parent
-  else
-    _resize_parent(p, w, h)
-  end
-end
-
 
 -- shared pixels between two clients
 local function shared_border(p1,p2,c1,c2)
@@ -279,37 +278,31 @@ local function find_dir(dir)
     p1, p2 = x, x+w
   end
 
+  local e1, e2
   for i,v in ipairs(clients) do
-    if (dir == "W" and v.workarea.x + v.workarea.width == x)
-      or (dir == "E" and v.workarea.x == x + w)  then
-        c1 = v.workarea.y
-        c2 = c1 + v.workarea.width
-    elseif (dir == "N" and v.workarea.y + v.workarea.height == y)
-      or (dir == "S" and v.workarea.y == y + h) then 
-        c1 = v.workarea.x
-        c2 = c1 + v.workarea.height
+    if dir == "W" then
+      e1 = v.workarea.x + v.workarea.width
+      e2 = x
+    elseif dir == "E" then
+      e1 = v.workarea.x
+      e2 = x + w
+    elseif dir == "N" then
+      e1 = v.workarea.y + v.workarea.height
+      e2 = y
+    elseif dir == "S" then
+      e1 = v.workarea.y
+      e2 = y + h
     end
-    --if dir == "W" and v.workarea.x + v.workarea.width == x then
-      --if v.workarea.x + v.workarea.width == x then 
+    --if   (dir == "W" and v.workarea.x + v.workarea.width == x)
+      --or (dir == "E" and v.workarea.x == x + w)  then
         --c1 = v.workarea.y
         --c2 = c1 + v.workarea.width
-      --end
-    --elseif dir == "E" then
-      --if v.workarea.x == x + w then 
-        --c1 = v.workarea.y
-        --c2 = c1 + v.workarea.width
-      --end
-    --elseif dir == "N" then
-      --if v.workarea.y + v.workarea.height == y then 
+    --elseif (dir == "N" and v.workarea.y + v.workarea.height == y)
+      --or   (dir == "S" and v.workarea.y == y + h) then 
         --c1 = v.workarea.x
         --c2 = c1 + v.workarea.height
-      --end
-    --elseif dir == "S" then
-      --if v.workarea.y == y + h then 
-        --c1 = v.workarea.x
-        --c2 = c1 + v.workarea.height
-      --end
     --end
+
     shared = c1 and c2 and shared_border(p1,p2,c1,c2) or 0
     if shared > best_shared then
       best = v

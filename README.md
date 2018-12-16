@@ -47,6 +47,6 @@ view_tag(i)| Goto or create tag i
 move_client_to_tag(i)| Moves focused client to tag i
 
 # TODO
-
+- Better neighbour detection
 - Global tag: shared between all workspaces
 - serializing: keep setup post reload
