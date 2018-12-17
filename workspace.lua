@@ -138,16 +138,18 @@ function _M:move_client_to_tag(i)
 
     -- layout integration
     i3_layout.del_client(c)
+    i3_layout.new_client(c, nil, tag)
+
 
 		if tag then -- move client to tag
       if tag.name == c_tag.name then return end
       tag.activated = true
       c:move_to_screen(tag.screen)
-			c:move_to_tag(tag)
+			--c:move_to_tag(tag)
 		else -- create tag and move client
 			tag = awful.tag.add(i,{screen=c_screen,layout=i3_layout})
 			tags[i] = tag
-			c:move_to_tag(tag)
+			--c:move_to_tag(tag)
 		end
 		-- keep the current screen in focus
 		c_tag:view_only()

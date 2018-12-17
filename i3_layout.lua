@@ -169,6 +169,7 @@ end
 
 function move_to_parent(c, np, pos)
   _remove_client(c)
+  log("mtp: ac")
   _add_client(c, np, pos)
   arrange(awful.screen.focused().selected_tag)
 end
@@ -179,11 +180,13 @@ end
 function _M.new_client(c, focused, t)
   local s
   if t then
+    log("TTT")
     s = tag.screen
   else
     s = awful.screen.focused()
     t = s.selected_tag
   end
+  log("tname:", t.name)
 
   if not t.layout_clients then t.layout_clients = {} end
   if not t.workarea then t.workarea = s.workarea end
@@ -270,7 +273,6 @@ local function find_dir(dir)
   local x,y,w,h = c.workarea.x, c.workarea.y, 
                   c.workarea.width, c.workarea.height
 
-  local best, shared, best_shared = nil, 0, 0
   local p1, p2, c1, c2
   if dir == "E" or dir == "W" then
     p1, p2 = y, y+h
@@ -278,35 +280,35 @@ local function find_dir(dir)
     p1, p2 = x, x+w
   end
 
-  local e1, e2
+  local e1, e2, d
+  local best, shared, best_shared = nil, 0, 0
   for i,v in ipairs(clients) do
     if dir == "W" then
-      e1 = v.workarea.x + v.workarea.width
-      e2 = x
+      d = (v.workarea.x + v.workarea.width) - x
+      c1 = v.workarea.y
+      c2 = c1 + v.workarea.height
     elseif dir == "E" then
-      e1 = v.workarea.x
-      e2 = x + w
+      d = v.workarea.x - (x + w)
+      c1 = v.workarea.y
+      c2 = c1 + v.workarea.width
     elseif dir == "N" then
-      e1 = v.workarea.y + v.workarea.height
-      e2 = y
+      d = (v.workarea.y + v.workarea.height) - y
+      c1 = v.workarea.x
+      c2 = c1 + v.workarea.height
     elseif dir == "S" then
-      e1 = v.workarea.y
-      e2 = y + h
+      d = v.workarea.y - (y + h)
+      c1 = v.workarea.x
+      c2 = c1 + v.workarea.height
     end
-    --if   (dir == "W" and v.workarea.x + v.workarea.width == x)
-      --or (dir == "E" and v.workarea.x == x + w)  then
-        --c1 = v.workarea.y
-        --c2 = c1 + v.workarea.width
-    --elseif (dir == "N" and v.workarea.y + v.workarea.height == y)
-      --or   (dir == "S" and v.workarea.y == y + h) then 
-        --c1 = v.workarea.x
-        --c2 = c1 + v.workarea.height
-    --end
-
-    shared = c1 and c2 and shared_border(p1,p2,c1,c2) or 0
-    if shared > best_shared then
-      best = v
-      best_shared = shared
+    if -10 < d and d < 10 then
+      log("points", p1, p2, c1, c2)
+      shared = c1 and c2 and shared_border(p1,p2,c1,c2) or 0
+      log("shared: " .. shared)
+      if shared > best_shared then
+        log("best"..shared)
+        best = v
+        best_shared = shared
+      end
     end
   end
   return best
@@ -358,6 +360,7 @@ function _M.move_client(dir)
 end
 
 function _M.del_client(c)
+  log("Del client")
   local p = c.parent
   local cls = p.layout_clients
   _remove_client(c)
@@ -443,7 +446,7 @@ local function del_client(c)
 end
 
 local function arrange_tag(t)
-  log(c)
+  log("tag name:" .. t.name)
   arrange(t)
 end
 
@@ -456,10 +459,8 @@ capi.tag.connect_signal("property::selected", function() log("selected")end)
 capi.tag.connect_signal("property::activated", function() log("activated")end)
 capi.tag.connect_signal("property::useless_gap", function() log("useless_gap")end)
 capi.tag.connect_signal("property::master_fill_policy", function() log("master_fill_policy")end)
-capi.tag.connect_signal("tagged", 
-  function(t) log("tagged") log("name" .. t.name) arrange_tag(t)
-end)
-capi.tag.connect_signal("untagged", function()log("untagged")end)
+capi.tag.connect_signal("tagged",  arrange_tag)
+capi.tag.connect_signal("untagged", arrange_tag)
 
 capi.client.connect_signal("request::geometry", function(c, cont, ad)
   note{text="Connect"}
