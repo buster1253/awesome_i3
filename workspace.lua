@@ -100,14 +100,17 @@ function _M:swap_ws(name)
 	end
 end
 
-
+-- TODO remember focused tag
 function _M:view_tag(i)
 	local tags = self.workspaces[self.current]
 	local tag = tags[i]
   local c_screen = awful.screen.focused()
   local n_screen = tag and tag.screen or c_screen
   local c_tag = c_screen.selected_tag
-
+  local c = client.focus
+  if not c then print("damn") 
+  else print("yeah") end
+  c_tag.focused = c
   if tag then
     if tag.name == c_tag.name then return end
     if not tag.activated then
@@ -121,6 +124,7 @@ function _M:view_tag(i)
 	end
   tag.index = get_position(tag.name, tags, c_screen.index)
   tag:view_only()
+  client.focus = tag.focused
   if n_screen.index == c_screen.index 
     and self:count_tags(c_screen.index) > 1 
     and #c_tag:clients() < 1 then
@@ -138,9 +142,6 @@ function _M:move_client_to_tag(i)
 
     -- layout integration
     i3_layout.remove_client(c)
-    print("layout: add client")
-    i3_layout.new_client(c, nil, tag)
-
 
 		if tag then -- move client to tag
       if tag.name == c_tag.name then return end
@@ -154,8 +155,9 @@ function _M:move_client_to_tag(i)
 		end
 		-- keep the current screen in focus
 		c_tag:view_only()
-    i3_layout.arrange(tag)
 		awful.screen.focus(c_screen)
+    i3_layout.add_client(c, nil, tag)
+    i3_layout.arrange(tag)
 	end
 end
 

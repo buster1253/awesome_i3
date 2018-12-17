@@ -180,14 +180,20 @@ function move_to_parent(c, np, pos)
 end
 
 -------------------------------------
+function _M.new_client(...)
+  log("new_client() is deprecated use add_client()")
+  _M.add_client(...)
+end
 -- DOING: 
 --   add optional tag argument
-function _M.new_client(c, focused, t)
+function _M.add_client(c, focused, t)
+  if not c then log("WHAT") return end
   local s
   if t then
     log("TTT")
     s = t.screen
   else
+    log("wddwd")
     s = awful.screen.focused()
     t = s.selected_tag
   end
@@ -210,9 +216,14 @@ function _M.new_client(c, focused, t)
     insert(t.layout_clients, c)
     return
   else
-    awful.client.focus.history.previous() -- focus is already on new client
+    -- Not when jumping tags
+    -- if t assume tag
+    -- TODO 
+    if not t then
+      awful.client.focus.history.previous() -- focus is already on new client
+    end
     local focused = f or client.focus
-    if not focused then log("[ADD CLIENT]NO FOCUSED CLIENT") end
+    if not focused then log("[ADD CLIENT] NO FOCUSED CLIENT") end
 
     local p
     if settings.split_parent then p = focused.parent
@@ -430,7 +441,7 @@ function _M.toggle_orientation()
 end
 
 local function new_client(c)
-  _M.new_client(c)
+  _M.add_client(c)
   arrange(c.screen.selected_tag)
 end
 
