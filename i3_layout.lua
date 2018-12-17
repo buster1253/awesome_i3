@@ -148,8 +148,13 @@ local function _add_client(c, p, pos)
     _resize_parent(p, 0, -1*hd, pos)
   end
 end
+local function elder_tag(c)
+  while c.parent do c = c.parent end
+  return c
+end
 -- removes the client from the parent
-local function _remove_client(c) 
+local function remove_client(c) 
+  log("remove_client")
   local p = c.parent
   local w = c.workarea.width
   local h = c.workarea.height
@@ -165,11 +170,11 @@ local function _remove_client(c)
   else
     _resize_parent(p, w, h)
   end
+  arrange(elder_tag(p))
 end
 
 function move_to_parent(c, np, pos)
-  _remove_client(c)
-  log("mtp: ac")
+  remove_client(c)
   _add_client(c, np, pos)
   arrange(awful.screen.focused().selected_tag)
 end
@@ -181,7 +186,7 @@ function _M.new_client(c, focused, t)
   local s
   if t then
     log("TTT")
-    s = tag.screen
+    s = t.screen
   else
     s = awful.screen.focused()
     t = s.selected_tag
@@ -321,7 +326,6 @@ function _M.move_focus(dir)
 end
 
 local function swap_clients(c1, c2, arr)
-  log("swap_clients")
   local idx1, idx2
   for i,v in ipairs(arr) do
     if v == c1 then idx1 = i
@@ -360,18 +364,8 @@ function _M.move_client(dir)
 end
 
 function _M.del_client(c)
-  log("Del client")
-  local p = c.parent
-  local cls = p.layout_clients
-  _remove_client(c)
-  if #cls == 0 then
-    if p.parent then
-      --move_to_parent(cls[1], p.parent)
-    end
-    if p ~= awful.screen.focused().selected_tag then
-      _M.del_client(p)
-    end
-  end
+  log("[DEPRECATED] i3_layout: del_client() is deprecated use remove_client()")
+  remove_client(c)
 end
 
 function _M.split(orientation)
@@ -441,8 +435,8 @@ local function new_client(c)
 end
 
 local function del_client(c)
-  _M.del_client(c)
-  arrange(c.screen.selected_tag)
+  _M.remove_client(c)
+  --arrange(c.screen.selected_tag)
 end
 
 local function arrange_tag(t)
@@ -543,6 +537,8 @@ function _M.restore()
   --end
 end
 
+_M.remove_client = remove_client
+_M.arrange = arrange
 --_M.restore()
 
 return _M
