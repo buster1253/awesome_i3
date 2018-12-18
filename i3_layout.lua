@@ -40,6 +40,8 @@ local function _get_idx(c, a)
   for i,v in ipairs(a) do
     if v == c then return i end
   end
+  log("_get_idx: no result")
+  return 0
 end
 
 -----------------------------------------
@@ -69,7 +71,6 @@ local function arrange(s)
     if c.layout_clients and #c.layout_clients > 0 then
       arrange_parent(c)
     else
-      log("wa", je(c.workarea))
       place_client(c)
     end
   end
@@ -77,8 +78,8 @@ end
 
 local function _resize_parent(p, w, h, ignore)
   log("_resize_parent", "w: " .. w, "h: " .. h)
-  local wd = w / #p.layout_clients - 1
-  local hd = h / #p.layout_clients - 1
+  local wd = w / #p.layout_clients
+  local hd = h / #p.layout_clients
   local sx = p.workarea.x
   local sy = p.workarea.y
   log("clients:" .. #p.layout_clients)
@@ -97,9 +98,7 @@ local function _resize_parent(p, w, h, ignore)
         _wa.x = sx
         _wa.y = sy
         _wa.height = p.workarea.height
-        log("wa2", je(_wa))
         sx = sx + _wa.width
-        log("sx" .. i .. ": " .. sx)
       else
         _wa.height = _wa.height + hd
         _wa.y = sy
@@ -142,13 +141,13 @@ local function _add_client(c, p, pos)
   local o = p.orientation
 
   if pos > 0 then
+    log("greater than 0")
     wd = w / #cls
     hd = h / #cls
     insert(cls, pos, c)
     width = wd
     height = hd
   else
-    pos = 1
     wd = w
     hd = h
     insert(cls, c)
@@ -161,15 +160,17 @@ local function _add_client(c, p, pos)
     x = 0,
     y = 0,
     width = ((o == "h" and width) or w),
-    height = ((o == "h" and h) or (height)),
+    --height = ((o == "h" and h) or (height)),
+    --width = 200, 
+    height = 100,
   }
   log("workarea", je(c.workarea))
   log("wd" .. wd .. " hd: " ..hd)
   c.parent = p
   if p.orientation == "h" then
-    _resize_parent(p, -1*wd, 0, pos)
+    _resize_parent(p, -1*wd, 0, pos + 1)
   elseif p.orientation == "v" then
-    _resize_parent(p, 0, -1*hd, pos)
+    _resize_parent(p, 0, -1*hd, pos + 1)
   else log("add_client: bad orientation: " .. (p.orientation or "")) end
 end
 
@@ -238,7 +239,7 @@ function _M.add_client(c, f, t)
   end
 
   p.orientation = p.orientation or settings.orientation
-  _add_client(c, p)
+  _add_client(c, p, pos)
   client.focus = c -- move to workspaces
 
 
