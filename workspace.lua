@@ -135,13 +135,14 @@ end
 function _M:move_client_to_tag(i)
 	if client.focus then
     local tags = self.workspaces[self.current]
-		local tag = tags[i]
-		local c	  = client.focus
+		local tag  = tags[i]
+		local c	   = client.focus
 		local c_screen = awful.screen.focused()
 		local c_tag = c_screen.selected_tag
 
     -- layout integration
     i3_layout.remove_client(c)
+    i3_layout.add_client(c, nil, tag)
 
 		if tag then -- move client to tag
       if tag.name == c_tag.name then return end
@@ -156,8 +157,7 @@ function _M:move_client_to_tag(i)
 		-- keep the current screen in focus
 		c_tag:view_only()
 		awful.screen.focus(c_screen)
-    i3_layout.add_client(c, nil, tag)
-    i3_layout.arrange(tag)
+    --i3_layout.focus(c_tag)
 	end
 end
 
