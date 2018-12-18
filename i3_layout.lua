@@ -77,8 +77,8 @@ end
 
 local function _resize_parent(p, w, h, ignore)
   log("_resize_parent", "w: " .. w, "h: " .. h)
-  local wd = w / #p.layout_clients
-  local hd = h / #p.layout_clients
+  local wd = w / #p.layout_clients - 1
+  local hd = h / #p.layout_clients - 1
   local sx = p.workarea.x
   local sy = p.workarea.y
   log("clients:" .. #p.layout_clients)
@@ -86,30 +86,30 @@ local function _resize_parent(p, w, h, ignore)
 
   for i,c in ipairs(p.layout_clients) do
     local _wa = c.workarea
-    --if i == ignore then
-      --_wa.x = sx
-      --_wa.y = sy
-      --if p.orientation == "h" then sx = sx + _wa.width
-      --else sy = sy + _wa.height end
-    --else
-    if p.orientation == "h" then
-      _wa.width = _wa.width + wd
+    if i == ignore then
       _wa.x = sx
       _wa.y = sy
-      _wa.height = p.workarea.height
-      log("wa2", je(_wa))
-      sx = sx + _wa.width
-      log("sx" .. i .. ": " .. sx)
+      if p.orientation == "h" then sx = sx + _wa.width
+      else sy = sy + _wa.height end
     else
-      _wa.height = _wa.height + hd
-      _wa.y = sy
-      _wa.x = sx
-      _wa.width = p.workarea.width
-      sy = sy + _wa.height
-    end
-    if c.layout_clients and #c.layout_clients > 0 then
-      _resize_parent(c, wd, hd)
-      --end
+      if p.orientation == "h" then
+        _wa.width = _wa.width + wd
+        _wa.x = sx
+        _wa.y = sy
+        _wa.height = p.workarea.height
+        log("wa2", je(_wa))
+        sx = sx + _wa.width
+        log("sx" .. i .. ": " .. sx)
+      else
+        _wa.height = _wa.height + hd
+        _wa.y = sy
+        _wa.x = sx
+        _wa.width = p.workarea.width
+        sy = sy + _wa.height
+      end
+      if c.layout_clients and #c.layout_clients > 0 then
+        _resize_parent(c, wd, hd)
+      end
     end
   end
 
@@ -141,7 +141,7 @@ local function _add_client(c, p, pos)
   local h = p.workarea.height
   local o = p.orientation
 
-  if #cls > 0 then
+  if pos > 0 then
     wd = w / #cls
     hd = h / #cls
     insert(cls, pos, c)
