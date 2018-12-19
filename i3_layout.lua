@@ -87,6 +87,7 @@ local function _resize_parent(p, w, h, ignore)
 
   for i,c in ipairs(p.layout_clients) do
     local _wa = c.workarea
+    log("wa" .. i .. "pre", je(_wa))
     if i == ignore then
       _wa.x = sx
       _wa.y = sy
@@ -106,6 +107,7 @@ local function _resize_parent(p, w, h, ignore)
         _wa.width = p.workarea.width
         sy = sy + _wa.height
       end
+      log("wa" .. i, je(_wa))
       if c.layout_clients and #c.layout_clients > 0 then
         _resize_parent(c, wd, hd)
       end
@@ -135,18 +137,19 @@ Client:
 --]]
 local function _add_client(c, p, pos)
   local cls = p.layout_clients
-  pos = pos or #cls
+  pos = (pos > 0 and pos) or #cls
   local w = p.workarea.width
   local h = p.workarea.height
   local o = p.orientation
 
-  if pos > 0 then
-    log("greater than 0")
-    wd = w / #cls
-    hd = h / #cls
+  if #cls > 0 then
+    if pos > #cls then pos = #cls end
+    log("pos", pos)
     insert(cls, pos, c)
-    width = wd
-    height = hd
+    wd = w / #cls 
+    hd = h / #cls
+    width = w / #cls
+    height = h / #cls
   else
     wd = w
     hd = h
@@ -160,17 +163,17 @@ local function _add_client(c, p, pos)
     x = 0,
     y = 0,
     width = ((o == "h" and width) or w),
-    --height = ((o == "h" and h) or (height)),
+    height = ((o == "h" and h) or (height)),
     --width = 200, 
-    height = 100,
+    --height = 100,
   }
-  log("workarea", je(c.workarea))
-  log("wd" .. wd .. " hd: " ..hd)
+  log("width:" .. width)
+  log("wd: " .. wd .. " hd: " .. hd)
   c.parent = p
   if p.orientation == "h" then
-    _resize_parent(p, -1*wd, 0, pos + 1)
+    _resize_parent(p, -1*wd, 0, pos)
   elseif p.orientation == "v" then
-    _resize_parent(p, 0, -1*hd, pos + 1)
+    _resize_parent(p, 0, -1*hd, pos)
   else log("add_client: bad orientation: " .. (p.orientation or "")) end
 end
 
@@ -230,14 +233,16 @@ function _M.add_client(c, f, t)
   --if not t.workarea then t.workarea = s.workarea end
   f = f or client.focus
   local p
+  local pos
   if t.layout_clients and t.workarea and f and f.parent then
     p = f.parent
+    pos = _get_idx(f, f.parent)
   else
+    pos = 1
     t.layout_clients = t.layout_clients or {}
     t.workarea = t.workarea or s.workarea
     p = t
   end
-
   p.orientation = p.orientation or settings.orientation
   _add_client(c, p, pos)
   client.focus = c -- move to workspaces
