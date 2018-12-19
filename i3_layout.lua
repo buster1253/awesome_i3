@@ -214,7 +214,11 @@ function _M.new_client(...)
   log("new_client() is deprecated use add_client()")
   _M.add_client(...)
 end
+--[[
 
+
+
+--]]
 function _M.add_client(c, f, t)
   local s = awful.screen.focused()
   if t then
@@ -236,7 +240,7 @@ function _M.add_client(c, f, t)
   local pos
   if t.layout_clients and t.workarea and f and f.parent then
     p = f.parent
-    pos = _get_idx(f, f.parent)
+    pos = _get_idx(f, f.parent.layout_clients) + 1
   else
     pos = 1
     t.layout_clients = t.layout_clients or {}
@@ -244,6 +248,7 @@ function _M.add_client(c, f, t)
     p = t
   end
   p.orientation = p.orientation or settings.orientation
+  log("pos: " .. pos)
   _add_client(c, p, pos)
   client.focus = c -- move to workspaces
 
