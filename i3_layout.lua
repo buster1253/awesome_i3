@@ -136,23 +136,25 @@ Client:
 --]]
 local function _add_client(c, p, pos)
   local cls = p.layout_clients
-  pos = (pos > 0 and pos) or #cls
+  pos = pos or #cls + 1
   local w = p.workarea.width
   local h = p.workarea.height
   local o = p.orientation
+  local wd, hd, width, height
 
-  if #cls > 0 then
-    if pos > #cls then pos = #cls end
+  if #cls > 1 then
+    --if pos > #cls then pos = #cls end
     log("pos", pos)
     insert(cls, pos, c)
     wd = w / #cls 
     hd = h / #cls
-    width = w / #cls
+    width  = w / #cls
     height = h / #cls
+    log("stuff", wd, hd, width, height)
   else
+    insert(cls, c)
     wd = w
     hd = h
-    insert(cls, c)
     width  = w
     height = h
   end
