@@ -41,7 +41,6 @@ local function _get_idx(c, a)
     if v == c then return i end
   end
   log("_get_idx: no result")
-  return 0
 end
 
 -----------------------------------------
