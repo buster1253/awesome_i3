@@ -709,9 +709,9 @@ capi.tag.connect_signal("property::master_fill_policy", function() log("master_f
 capi.tag.connect_signal("tagged",  arrange)
 capi.tag.connect_signal("untagged", arrange)
 
-capi.client.connect_signal("request::geometry", function(c, cont, ad)
-  note{text="Connect"}
-end)
+--capi.client.connect_signal("request::geometry", function(c, cont, ad)
+  --note{text="Connect"}
+--end)
 capi.client.connect_signal("manage", new_client)
 capi.client.connect_signal("unmanage", del_client)
 capi.screen.connect_signal("property::workarea", function() return end)

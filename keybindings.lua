@@ -5,12 +5,18 @@ local hotkeys_popup = require("awful.hotkeys_popup").widget
 local layout = require "i3_layout"
 
 -- TODO move this to another module
-local def = [[dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify 
-/org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.]]
+local def = "dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify"
+		.." /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player."
 local spotify = {
-	toggle = function() os.execute(def.."PlayPause") end,
-  prev = function() os.execute(def.."Previous") end,
-	next = function() os.execute(def.."Next") end
+	toggle = function()
+		os.execute(def.."PlayPause")
+	end,
+	prev = function()
+		os.execute(def.."Previous")
+	end,
+	next = function()
+		os.execute(def.."Next")
+	end
 }
 
 local globalkeys = gears.table.join(
@@ -31,14 +37,7 @@ local globalkeys = gears.table.join(
 			{description = "List workspaces", group = "workspaces"}),
 	awful.key({ modkey, "Shift"}, "s", function() layout.serialize() end,
 			{description = "List workspaces", group = "workspaces"}),
-
-	awful.key({ modkey, "Shift" }, "h", function() layout.move_client("W") end,
-			{description = "List workspaces", group = "workspaces"}),
 	awful.key({ modkey, "Shift" }, "l", function() layout.move_client("E") end,
-			{description = "List workspaces", group = "workspaces"}),
-	awful.key({ modkey, "Shift" }, "k", function() layout.move_client("N") end,
-			{description = "List workspaces", group = "workspaces"}),
-	awful.key({ modkey, "Shift" }, "j", function() layout.move_client("S") end,
 			{description = "List workspaces", group = "workspaces"}),
 
 	awful.key({ modkey }, "a", function()
@@ -206,6 +205,17 @@ for i = 0, 9 do
       {description = "move focused client to tag #"..i, group = "tag"})
   )
 end
+
+clientkeys = gears.table.join(
+  awful.key({ modkey }, "f",
+    function (c)
+      c.fullscreen = not c.fullscreen
+      c:raise()
+    end,
+    {description = "toggle fullscreen", group = "client"}),
+  awful.key({ modkey, "Shift" }, "q",function (c) c:kill() end,
+    {description = "close", group = "client"})
+)
 
 -- Set keys
 root.keys(globalkeys)

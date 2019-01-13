@@ -108,8 +108,7 @@ function _M:view_tag(i)
   local n_screen = tag and tag.screen or c_screen
   local c_tag = c_screen.selected_tag
   local c = client.focus
-  if not c then print("damn") 
-  else print("yeah") end
+
   c_tag.focused = c
   if tag then
     if tag.name == c_tag.name then return end
@@ -124,7 +123,7 @@ function _M:view_tag(i)
 	end
   tag.index = get_position(tag.name, tags, c_screen.index)
   tag:view_only()
-  client.focus = tag.focused
+  --client.focus = tag.focused
   if n_screen.index == c_screen.index 
     and self:count_tags(c_screen.index) > 1 
     and #c_tag:clients() < 1 then
