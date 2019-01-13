@@ -141,8 +141,8 @@ function _M:move_client_to_tag(i)
 		local c_tag = c_screen.selected_tag
 
     -- layout integration
-    i3_layout.remove_client(c)
-    i3_layout.add_client(c, nil, tag)
+    --i3_layout.remove_client(c)
+    --i3_layout.add_client(c, nil, tag)
 
 		if tag then -- move client to tag
       if tag.name == c_tag.name then return end
@@ -154,6 +154,7 @@ function _M:move_client_to_tag(i)
 			tags[i] = tag
       c:move_to_tag(tag)
 		end
+    i3_layout.move_to_parent(c, tag)
 		-- keep the current screen in focus
 		c_tag:view_only()
 		awful.screen.focus(c_screen)

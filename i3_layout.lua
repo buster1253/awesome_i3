@@ -40,7 +40,7 @@ local function _get_idx(c, a)
   for i,v in ipairs(a) do
     if v == c then return i end
   end
-  log("_get_idx: no result")
+  --log("_get_idx: no result")
 end
 
 -----------------------------------------
@@ -76,17 +76,24 @@ local function arrange(s)
 end
 
 local function _resize_parent(p, w, h, ignore)
-  log("_resize_parent", "w: " .. w, "h: " .. h)
-  local wd = w / #p.layout_clients
-  local hd = h / #p.layout_clients
+  log("resize_parent", "w" ..w, "h" .. h)
+  local cls = p.layout_clients
+  local clsc = #p.layout_clients
+  local o = p.orientation
+  local wd, hd
+  if ignore then
+    wd = w / (clsc - 1)
+    hd = h / (clsc - 1)
+  else
+    wd = w / clsc
+    hd = h / clsc
+  end
+
   local sx = p.workarea.x
   local sy = p.workarea.y
-  log("clients:" .. #p.layout_clients)
-  log("wd:" .. wd .. " hd: " .. hd)
 
   for i,c in ipairs(p.layout_clients) do
     local _wa = c.workarea
-    log("wa" .. i .. "pre", je(_wa))
     if i == ignore then
       _wa.x = sx
       _wa.y = sy
@@ -108,7 +115,11 @@ local function _resize_parent(p, w, h, ignore)
       end
       log("wa" .. i, je(_wa))
       if c.layout_clients and #c.layout_clients > 0 then
-        _resize_parent(c, wd, hd)
+        if o == "h" then
+          _resize_parent(c, wd, 0)
+        else
+          _resize_parent(c, 0, hd)
+        end
       end
     end
   end
@@ -128,13 +139,20 @@ local function _resize_parent(p, w, h, ignore)
     end
   end
 end
--- adds client to the parent
---[[
-Client:
- - workarea
- - parent
---]]
+
 local function _add_client(c, p, pos)
+  if not p.layout_clients or not p.workarea then
+    local s_wa = p.screen.workarea
+    p.layout_clients = {}
+    p.workarea = {
+      x = s_wa.x,
+      y = s_wa.y,
+      width = s_wa.width,
+      height = s_wa.height
+    }
+    p.orientation = "h"
+  end
+
   local cls = p.layout_clients
   pos = pos or #cls + 1
   local w = p.workarea.width
@@ -142,15 +160,12 @@ local function _add_client(c, p, pos)
   local o = p.orientation
   local wd, hd, width, height
 
-  if #cls > 1 then
-    --if pos > #cls then pos = #cls end
-    log("pos", pos)
+  if pos > 1 then
     insert(cls, pos, c)
     wd = w / #cls 
     hd = h / #cls
     width  = w / #cls
     height = h / #cls
-    log("stuff", wd, hd, width, height)
   else
     insert(cls, c)
     wd = w
@@ -159,23 +174,20 @@ local function _add_client(c, p, pos)
     height = h
   end
 
-  local wa = p.workarea
   c.workarea = {
-    x = 0,
+    x = 0, -- TODO set to parent x and y
     y = 0,
     width = ((o == "h" and width) or w),
     height = ((o == "h" and h) or (height)),
-    --width = 200, 
-    --height = 100,
   }
-  log("width:" .. width)
-  log("wd: " .. wd .. " hd: " .. hd)
+
   c.parent = p
   if p.orientation == "h" then
     _resize_parent(p, -1*wd, 0, pos)
   elseif p.orientation == "v" then
     _resize_parent(p, 0, -1*hd, pos)
   else log("add_client: bad orientation: " .. (p.orientation or "")) end
+  client.focus = c
 end
 
 
@@ -185,7 +197,6 @@ local function elder_tag(c)
 end
 -- removes the client from the parent
 local function remove_client(c) 
-  log("remove_client")
   local p = c.parent
   local w = c.workarea.width
   local h = c.workarea.height
@@ -201,7 +212,8 @@ local function remove_client(c)
   else
     _resize_parent(p, w, h)
   end
-  --arrange(elder_tag(p))
+  arrange(elder_tag(p))
+  awful.client.focus.history.previous()
 end
 
 function move_to_parent(c, np, pos)
@@ -215,14 +227,10 @@ function _M.new_client(...)
   log("new_client() is deprecated use add_client()")
   _M.add_client(...)
 end
---[[
 
-
-
---]]
 function _M.add_client(c, f, t)
   local s = awful.screen.focused()
-  if t then
+  if t and t.layout_clients and t.workarea then
     s.selected_tag.focused = client.focus
     s = t.screen
   else
@@ -234,24 +242,22 @@ function _M.add_client(c, f, t)
     c.workarea = {x=0,y=0,height=0,width=0}
   end
 
-  --if not t.layout_clients then t.layout_clients = {} end
-  --if not t.workarea then t.workarea = s.workarea end
   f = f or client.focus
-  local p
-  local pos
+  local p, pos
   if t.layout_clients and t.workarea and f and f.parent then
     p = f.parent
-    pos = _get_idx(f, f.parent.layout_clients) + 1
+    pos = (_get_idx(f, p.layout_clients) or 0) + 1
   else
     pos = 1
     t.layout_clients = t.layout_clients or {}
     t.workarea = t.workarea or s.workarea
     p = t
   end
+
   p.orientation = p.orientation or settings.orientation
-  log("pos: " .. pos)
   _add_client(c, p, pos)
-  client.focus = c -- move to workspaces
+  --client.focus = c -- move to workspaces
+
 
 
 
@@ -437,7 +443,7 @@ local function find_dir(dir)
     elseif dir == "E" then
       d = v.workarea.x - (x + w)
       c1 = v.workarea.y
-      c2 = c1 + v.workarea.width
+      c2 = c1 + v.workarea.height
     elseif dir == "N" then
       d = (v.workarea.y + v.workarea.height) - y
       c1 = v.workarea.x
@@ -447,12 +453,10 @@ local function find_dir(dir)
       c1 = v.workarea.x
       c2 = c1 + v.workarea.height
     end
-    if -10 < d and d < 10 then
-      log("points", p1, p2, c1, c2)
+    log("D .. " .. d)
+    if -20 < d and d < 20 then
       shared = c1 and c2 and shared_border(p1,p2,c1,c2) or 0
-      log("shared: " .. shared)
       if shared > best_shared then
-        log("best"..shared)
         best = v
         best_shared = shared
       end
@@ -484,60 +488,161 @@ end
 
 function _M.move_client(dir)
   local c = client.focus
-  local n = find_dir(dir)
   local p = c.parent
+  local cls = p.layout_clients
 
-  if not n then return end -- TODO check if screen in dir
+  local c_idx = _get_idx(c, cls)
+  local p_idx
+  if p.parent then
+    p_idx = _get_idx(p, p.parent.layout_clients)
+  end
 
-  if n.parent == c.parent then -- move inside 
-    local cls = p.layout_clients
-    swap_clients(c, n, cls)
-    place_client(c)
-    place_client(n)
-  else
-    if p.parent then
-      local pos = _get_idx(p, p.parent.layout_clients)
-      if dir == "E" or dir == "S" then
-        pos = pos + 1
+  if p.orientation == "h" then
+    if dir == "E" then
+      if c_idx < #cls then
+        local n = cls[c_idx + 1]
+        if n.layout_clients then
+          move_to_parent(c, n)
+        else
+          swap_clients(c, n, cls)
+          place_client(c)
+          place_client(n)
+        end
+      elseif p.parent then
+        move_to_parent(c, p.parent, p_idx + 1) 
+      else
+        log("unhandeled move")
       end
-      move_to_parent(c, c.parent.parent, pos)
+
+    elseif dir == "W" then
+      if c_idx > 1 then
+        local n = cls[c_idx - 1]
+        if n.layout_clients then
+          move_to_parent(c, n)
+        else
+          swap_clients(c, n, cls)
+          place_client(c)
+          place_client(n)
+        end
+      elseif p.parent then
+        move_to_parent(c, p.parent, p_idx)
+      end
+    elseif dir == "S" and p_idx then
+      move_to_parent(c, p.parent, p_idx + 1)
+    elseif dir == "N" and p_idx then
+      move_to_parent(c, p.parent, p_idx)
     end
+
+  elseif p.orientation == "v" then
+    if dir == "S" then
+      if c_idx < #cls then
+        local n = cls[c_idx + 1]
+        if n.layout_clients then
+          move_to_parent(c, n)
+        else
+          swap_clients(c, n, cls)
+          place_client(c)
+          place_client(n)
+        end
+      elseif p.parent then
+        move_to_parent(c, p.parent, p_idx + 1)
+      end
+
+    elseif dir == "N" then
+      if c_idx > 1 then
+        local n = cls[c_idx - 1]
+        if n.layout_clients then
+          move_to_parent(c, n)
+        else
+          swap_clients(c, n, cls)
+          place_client(c)
+          place_client(n)
+        end
+      elseif p.parent then
+        move_to_parent(c, p.parent, p_idx)
+      end
+
+    elseif dir == "E" and p_idx then
+      move_to_parent(c, p.parent, p_idx + 1)
+    elseif dir == "W" and p_idx then
+      move_to_parent(c, p.parent, p_idx)
+    end
+
+  else
+    log("unknown orientation: " .. p.orientation)
   end
 end
 
-function _M.del_client(c)
-  log("[DEPRECATED] i3_layout: del_client() is deprecated use remove_client()")
-  remove_client(c)
-end
+
+--function _M.move_client(dir)
+  --log("move_client: "..dir)
+  --local c = client.focus
+  --local n = find_dir(dir)
+  --local p = c.parent
+
+  --if not n then 
+    --return log("no n")
+  --end -- TODO check if screen in dir
+  --log("found n")
+
+  --if p == n.parent then -- move inside 
+    --local cls = p.layout_clients
+    --swap_clients(c, n, cls)
+    --place_client(c)
+    --place_client(n)
+  --elseif p.parent then
+    --local pos = _get_idx(p, p.parent.layout_clients)
+    --if dir == "E" or dir == "S" then
+      --pos = pos + 1
+    --end
+    --move_to_parent(c, p.parent, pos)
+  --else 
+    --local tmp_p = n.parent.parent
+    --while tmp_p do
+      --if _get_idx(c, tmp_p.layout_clients) then
+        --break
+      --else
+        --tmp_p = tmp_p.parent
+      --end
+    --end
+
+    --log("else condition")
+  --end
+--end
 
 function _M.split(orientation)
   if orientation ~= "v" and orientation ~= "h" then 
     print("Layout.split invalid orientation " .. orientation)
   end
+
   local s = awful.screen.focused()
+  local t = s.selected_tag
+
   local focused = client.focus
   if not focused then
-    log("_M.split() -- THIS IS NOT SUPPOSED TO HAPPEN")
     s.orientation = orientation
     return
   end
+
   local parent = focused.parent
   settings.split_parent = true
   --parent.orientation = orientation
+  local f_wa = focused.workarea
   local new_parent = {
-    workarea = focused.workarea,
+    workarea = {
+      x = f_wa.x,
+      y = f_wa.y,
+      height = f_wa.height,
+      width = f_wa.width,
+    },
     layout_clients = {focused} ,
     orientation = orientation,
     parent = focused.parent
   }
-  for i,v in ipairs(parent.layout_clients) do
-    if v == focused then
-      parent.layout_clients[i] = new_parent
-      break
-    end
-  end
+
+  parent.layout_clients[_get_idx(focused, parent.layout_clients)] = new_parent
   focused.parent = new_parent
-  arrange(s)
+  --arrange(elder_tag(parent))
 end
 
 --TODO recurse children
@@ -583,6 +688,7 @@ local function new_client(c)
 end
 
 local function del_client(c)
+  log("del_client")
   _M.remove_client(c)
   --arrange(c.screen.selected_tag)
 end
@@ -600,8 +706,8 @@ capi.tag.connect_signal("property::selected", arrange_tag)
 capi.tag.connect_signal("property::activated", arrange_tag)
 capi.tag.connect_signal("property::useless_gap", function() log("useless_gap")end)
 capi.tag.connect_signal("property::master_fill_policy", function() log("master_fill_policy")end)
-capi.tag.connect_signal("tagged",  arrange_tag)
-capi.tag.connect_signal("untagged", arrange_tag)
+capi.tag.connect_signal("tagged",  arrange)
+capi.tag.connect_signal("untagged", arrange)
 
 capi.client.connect_signal("request::geometry", function(c, cont, ad)
   note{text="Connect"}
