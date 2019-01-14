@@ -440,5 +440,5 @@ client.connect_signal("unfocus",
 	function(c) c.border_color = beautiful.border_normal 
 end)
 -- }}}
---naughty.suspend()
+naughty.suspend()
 --awful.titlebar.hide()
