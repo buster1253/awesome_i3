@@ -45,7 +45,7 @@ end
 
 -----------------------------------------
 local function place_client(c)
-  --log("WA", je(c.workarea))
+  log("WA", je(c.workarea))
   if not c.geometry then return end
   c:geometry(c.workarea)
 end
@@ -99,6 +99,7 @@ local function _resize_parent(p, w, h, ignore)
       _wa.y = sy
       if p.orientation == "h" then sx = sx + _wa.width
       else sy = sy + _wa.height end
+      log("wa" .. i, je(_wa))
     else
       if p.orientation == "h" then
         _wa.width = _wa.width + wd
@@ -160,19 +161,20 @@ local function _add_client(c, p, pos)
   local o = p.orientation
   local wd, hd, width, height
 
-  if pos > 1 then
+  local clsc = #cls > 0 and #cls or 1
+  --if #cls > 0 then
     insert(cls, pos, c)
     wd = w / #cls 
     hd = h / #cls
     width  = w / #cls
     height = h / #cls
-  else
-    insert(cls, c)
-    wd = w
-    hd = h
-    width  = w
-    height = h
-  end
+  --else
+    --insert(cls, c)
+    --wd = w
+    --hd = h
+    --width  = w
+    --height = h
+  --end
 
   c.workarea = {
     x = 0, -- TODO set to parent x and y
@@ -186,7 +188,7 @@ local function _add_client(c, p, pos)
     _resize_parent(p, -1*wd, 0, pos)
   elseif p.orientation == "v" then
     _resize_parent(p, 0, -1*hd, pos)
-  else log("add_client: bad orientation: " .. (p.orientation or "")) end
+  end
   client.focus = c
 end
 
@@ -336,6 +338,9 @@ local function swap_clients(c1, c2, arr)
 
   c1.workarea = c2.workarea
   c2.workarea = tmp
+
+  place_client(c1)
+  place_client(c2)
 end
 
 function _M.move_client(dir)
@@ -357,8 +362,6 @@ function _M.move_client(dir)
           move_to_parent(c, n)
         else
           swap_clients(c, n, cls)
-          place_client(c)
-          place_client(n)
         end
       elseif p.parent then
         move_to_parent(c, p.parent, p_idx + 1) 
@@ -367,16 +370,16 @@ function _M.move_client(dir)
       end
 
     elseif dir == "W" then
+      log("moving west")
       if c_idx > 1 then
         local n = cls[c_idx - 1]
         if n.layout_clients then
           move_to_parent(c, n)
         else
           swap_clients(c, n, cls)
-          place_client(c)
-          place_client(n)
         end
       elseif p.parent then
+        log("moving to parent")
         move_to_parent(c, p.parent, p_idx)
       end
     elseif dir == "S" and p_idx then
@@ -393,8 +396,6 @@ function _M.move_client(dir)
           move_to_parent(c, n)
         else
           swap_clients(c, n, cls)
-          place_client(c)
-          place_client(n)
         end
       elseif p.parent then
         move_to_parent(c, p.parent, p_idx + 1)
@@ -407,8 +408,6 @@ function _M.move_client(dir)
           move_to_parent(c, n)
         else
           swap_clients(c, n, cls)
-          place_client(c)
-          place_client(n)
         end
       elseif p.parent then
         move_to_parent(c, p.parent, p_idx)
@@ -417,6 +416,7 @@ function _M.move_client(dir)
     elseif dir == "E" and p_idx then
       move_to_parent(c, p.parent, p_idx + 1)
     elseif dir == "W" and p_idx then
+      log("moving to parent. idx: ", p_idx)
       move_to_parent(c, p.parent, p_idx)
     end
 
@@ -567,6 +567,13 @@ capi.tag.connect_signal("untagged", arrange)
 capi.client.connect_signal("manage", new_client)
 capi.client.connect_signal("unmanage", del_client)
 capi.screen.connect_signal("property::workarea", function() return end)
+--capi.screen.connect_signal("removed", 
+  --function(s) 
+    --for i,t in ipairs(s.tags) do
+      --t.screen = screen.primary
+      --t.workarea = t.screen.workarea
+    --end
+  --end)
 
 
 _M.arrange = arrange
