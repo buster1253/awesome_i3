@@ -39,6 +39,12 @@ local globalkeys = gears.table.join(
 			{description = "List workspaces", group = "workspaces"}),
 	awful.key({ modkey, "Shift" }, "l", function() layout.move_client("E") end,
 			{description = "List workspaces", group = "workspaces"}),
+	awful.key({ modkey, "Shift" }, "h", function() layout.move_client("W") end,
+			{description = "List workspaces", group = "workspaces"}),
+	awful.key({ modkey, "Shift" }, "j", function() layout.move_client("S") end,
+			{description = "List workspaces", group = "workspaces"}),
+	awful.key({ modkey, "Shift" }, "k", function() layout.move_client("N") end,
+			{description = "List workspaces", group = "workspaces"}),
 
 	awful.key({ modkey }, "a", function()
 		awful.prompt.run {
