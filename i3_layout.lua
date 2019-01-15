@@ -222,10 +222,8 @@ function move_to_parent(c, np, pos)
   arrange(awful.screen.focused().selected_tag)
 end
 
--------------------------------------
-function _M.new_client(...)
-  log("new_client() is deprecated use add_client()")
-  _M.add_client(...)
+function _M.change_screen(t, s)
+  t.workarea = s.workarea
 end
 
 function _M.add_client(c, f, t)
@@ -247,6 +245,9 @@ function _M.add_client(c, f, t)
   if t.layout_clients and t.workarea and f and f.parent then
     p = f.parent
     pos = (_get_idx(f, p.layout_clients) or 0) + 1
+    if #t.layout_clients == 0 then
+      t.workarea = s.workarea
+    end
   else
     pos = 1
     t.layout_clients = t.layout_clients or {}
@@ -257,155 +258,7 @@ function _M.add_client(c, f, t)
   p.orientation = p.orientation or settings.orientation
   _add_client(c, p, pos)
   --client.focus = c -- move to workspaces
-
-
-
-
-
-  --if #t.layout_clients == 0 then -- first client: tag is parent
-    --log("fresh tag")
-    --local wa = t.workarea
-    --c.workarea = {
-      --width = wa.width,
-      --height = wa.height,
-      --x = wa.x,
-      --y = wa.y,
-    --}
-    --c.parent = t
-    --t.orientation = t.orientation or settings.orientation
-    --insert(t.layout_clients, c)
-    --client.focus = c
-    --return
-  --else
-    --local focused = f or client.focus
-    --local p
-    --if not focused then
-      --p = t
-    --elseif settings.split_parent then 
-      --p = focused.parent
-      --if not p then log("no parent") end
-    --else
-      --p = {
-        --workarea = focused.workarea,
-        --layout_clients = {focused},
-        --orientation = settings.orientation,
-        --parent = focused.parent
-      --}
-
-      --local f_idx = _get_idx(focused, focused.parent.layout_clients)
-      --focused.parent.layout_clients[f_idx] = p
-      --focused.parent = p
-    --end
-
-    --c.parent = p
-    --insert(p.layout_clients, c)
-    --if p.orientation == "h" then
-      --local w = p.workarea.width / #p.layout_clients
-      --for i,c in ipairs(p.layout_clients) do
-        --c.workarea = {
-          --x = p.workarea.x + (i-1) * w,
-          --y = p.workarea.y,
-          --height = p.workarea.height,
-          --width = w
-        --}
-      --end
-    --elseif p.orientation == "v" then
-      --local h = p.workarea.height / #p.layout_clients
-      --for i,c in ipairs(p.layout_clients) do
-        --c.workarea = {
-          --x = p.workarea.x,
-          --y = p.workarea.y + (i-1) * h,
-          --height = h,
-          --width = p.workarea.width
-        --}
-      --end
-    --end
-  --end
-  --client.focus = c
 end
--- DOING: 
---   add optional tag argument
---function _M.add_client(c, f, t)
-  --local s = awful.screen.focused()
-  --if t then
-    --s.selected_tag.focused = client.focus
-    --s = t.screen
-  --else
-    --t = s.selected_tag
-    --awful.client.focus.history.previous() -- focus is already on new client
-  --end
-
-  --if not t.layout_clients then t.layout_clients = {} end
-  --if not t.workarea then t.workarea = s.workarea end
-  --f = f or client.focus
-  --if t.layout_clients and t.workarea and f then
-    --parent = f.parent
-  --else
-
-  --if #t.layout_clients == 0 then -- first client: tag is parent
-    --log("fresh tag")
-    --local wa = t.workarea
-    --c.workarea = {
-      --width = wa.width,
-      --height = wa.height,
-      --x = wa.x,
-      --y = wa.y,
-    --}
-    --c.parent = t
-    --t.orientation = t.orientation or settings.orientation
-    --insert(t.layout_clients, c)
-    --client.focus = c
-    --return
-  --else
-    --local focused = f or client.focus
-    --local p
-    --if not focused then
-      --p = t
-    --elseif settings.split_parent then 
-      --p = focused.parent
-      --if not p then log("no parent") end
-    --else
-      --p = {
-        --workarea = focused.workarea,
-        --layout_clients = {focused},
-        --orientation = settings.orientation,
-        --parent = focused.parent
-      --}
-
-      --local f_idx = _get_idx(focused, focused.parent.layout_clients)
-      --focused.parent.layout_clients[f_idx] = p
-      --focused.parent = p
-    --end
-
-    --c.parent = p
-    --insert(p.layout_clients, c)
-    --if p.orientation == "h" then
-      --local w = p.workarea.width / #p.layout_clients
-      --for i,c in ipairs(p.layout_clients) do
-        --c.workarea = {
-          --x = p.workarea.x + (i-1) * w,
-          --y = p.workarea.y,
-          --height = p.workarea.height,
-          --width = w
-        --}
-      --end
-    --elseif p.orientation == "v" then
-      --local h = p.workarea.height / #p.layout_clients
-      --for i,c in ipairs(p.layout_clients) do
-        --c.workarea = {
-          --x = p.workarea.x,
-          --y = p.workarea.y + (i-1) * h,
-          --height = h,
-          --width = p.workarea.width
-        --}
-      --end
-    --end
-  --end
-  --client.focus = c
---end
-
-
-
 
 -- shared pixels between two clients
 local function shared_border(p1,p2,c1,c2)
@@ -453,7 +306,6 @@ local function find_dir(dir)
       c1 = v.workarea.x
       c2 = c1 + v.workarea.height
     end
-    log("D .. " .. d)
     if -20 < d and d < 20 then
       shared = c1 and c2 and shared_border(p1,p2,c1,c2) or 0
       if shared > best_shared then
@@ -770,7 +622,7 @@ local function r(client)
       r(c)
     else
       log("ADDING CLIENT")
-      _M.new_client(c, client)
+      _M.add_client(c, client)
     end
   end
 end
