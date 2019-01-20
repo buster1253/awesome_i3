@@ -175,8 +175,11 @@ end
 local function add_client(c, f, t)
 	if not t.layout_clients or not t.workarea then
 		t.layout_clients = {}
+	end
+	if #t.layout_clients == 0 then
 		t.workarea = t.screen.workarea
 	end
+
 
 	f = f or client.focus
 	local p = f and _get_tag(f) == t and f.parent or t
