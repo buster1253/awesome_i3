@@ -172,6 +172,10 @@ local function move_to_parent(c, np, pos)
 end
 
 local function add_client(c, f, t)
+	if c.type == "dialog" then
+		return
+	end
+
 	if not t.layout_clients or not t.workarea then
 		t.layout_clients = {}
 	end
@@ -240,6 +244,11 @@ local function find_dir(dir)
 				best_shared = shared
 			end
 		end
+	end
+	if not best then
+		dir = dir == "W" and "left" or dir == "E" and "right"
+			or dir == "N" and "up" or dir == "S" and "down"
+		awful.screen.focus_bydirection(dir, _get_tag(c).screen)
 	end
 	return best
 end
@@ -425,14 +434,15 @@ capi.tag.connect_signal("property::master_count", function() log("master_count")
 capi.tag.connect_signal("property::column_count", function() log("column_count")end)
 capi.tag.connect_signal("property::layout", arrange)
 capi.tag.connect_signal("property::windowfact", function() log("windowfact")end)
-capi.tag.connect_signal("property::selected", arrange)
+--capi.tag.connect_signal("property::selected", arrange)
 capi.tag.connect_signal("property::activated", arrange)
 capi.tag.connect_signal("property::useless_gap", function() log("useless_gap")end)
 capi.tag.connect_signal("property::master_fill_policy", function() log("master_fill_policy")end)
 capi.tag.connect_signal("tagged",
 	function(t, c)
-		log("Tagged")
+		--log("Tagged")
 		add_client(c, nil, t)
+		log("TagName: ", t.name)
 		arrange(_get_tag(c))
 	end)
 
