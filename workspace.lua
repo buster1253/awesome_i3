@@ -6,20 +6,20 @@ local i3_layout = require "i3_layout"
 
 local _M = {}
 
-local function get_position(tag_name, tags, screen_id) 
+local function get_position(tag_name, tags, screen_id)
 	local j = 0
 	for i=1, 9 do
 		local tag = tags[i]
-		if tag and tag.activated and tag.screen.index == screen_id then 
-			j = j + 1 
+		if tag and tag.activated and tag.screen.index == screen_id then
+			j = j + 1
 			if tag.name == tag_name then return j end
 		end
 	end
-	return 9 
+	return 9
 end
 
 
-local function table_length(t) 
+local function table_length(t)
 	local c = 0
 	for _ in pairs(t) do
 		if _ then c = c +1 end
@@ -48,7 +48,7 @@ function _M:list_ws()
 	local i = 1
 	for ws,_ in pairs(self.workspaces) do
 		if i == len then s = s .. ws break end
-		s = s .. ws .. "<br>" 
+		s = s .. ws .. "<br>"
 		i = i + 1
 	end
 	nau.notify{text = s}
@@ -59,8 +59,7 @@ function _M:new_ws(name)
 	self.workspaces[name] = ws
 
 	for s in screen do
-		local t = awful.tag.add(s.index, 
-		--{screen=s, layout=awful.layout.layouts[2]}
+		local t = awful.tag.add(s.index,
 		{screen=s, layout=i3_layout}
 		)
 		ws[s.index] = t
@@ -81,7 +80,7 @@ function _M:swap_ws(name)
 	if active_ws then
 		for i=1, 9 do
 			local t = active_ws[i]
-			if t then 
+			if t then
 				t.activated = false
 			end
 		end
@@ -90,7 +89,7 @@ function _M:swap_ws(name)
 	self.current = name
 	for i=1, 9 do
 		local t = next_ws[i]
-		if t then 
+		if t then
 			--self:view_tag(i)
 			t:clients(t:clients())
 			t.activated = true
