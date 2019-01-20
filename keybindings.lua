@@ -81,7 +81,7 @@ awful.key({ modkey}, "Right",	awful.tag.viewnext,
 awful.key({ modkey}, "Escape",	awful.tag.history.restore,
 	{description = "go back", group = "tag"}),
 
-awful.key({ modkey }, "w", function() mymainmenu:show() end,
+awful.key({ modkey }, "w", function() mainmenu:show() end,
 	{description = "show main menu", group = "awesome"}),
 
 -- Standard program
