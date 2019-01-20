@@ -48,6 +48,7 @@ local function place_client(c)
 end
 
 local function arrange(p)
+	log("arrange")
 	if not p.layout_clients then return end
 
 	for i,c in ipairs(p.layout_clients) do
@@ -177,7 +178,8 @@ local function add_client(c, f, t)
 		t.workarea = t.screen.workarea
 	end
 
-	local p = f and f.parent or client.focus and client.focus.parent or t
+	f = f or client.focus
+	local p = f and _get_tag(f) == t and f.parent or t
 	local pos = (_get_idx(f, p.layout_clients) or #p.layout_clients) + 1
 
 	p.orientation = p.orientation or settings.orientation
@@ -202,7 +204,7 @@ local function find_dir(dir)
 	local c = client.focus
 	local clients = s.clients
 
-	local x,y,w,h = c.workarea.x, c.workarea.y, 
+	local x,y,w,h = c.workarea.x, c.workarea.y,
 	c.workarea.width, c.workarea.height
 
 	local p1, p2, c1, c2
@@ -355,32 +357,29 @@ function _M.split(orientation)
 		print("Layout.split invalid orientation " .. orientation)
 	end
 
-	local s = awful.screen.focused()
-	local t = s.selected_tag
-
 	local focused = client.focus
 	if not focused then
-		s.orientation = orientation
+		awful.screen.focused().selected_tag.orientation = orientation
 		return
 	end
 
-	local parent = focused.parent
-	settings.split_parent = true
+	local p = focused.parent
+	--settings.split_parent = true
 	--parent.orientation = orientation
-	local f_wa = focused.workarea
+	local wa = focused.workarea
 	local new_parent = {
 		workarea = {
-			x = f_wa.x,
-			y = f_wa.y,
-			height = f_wa.height,
-			width = f_wa.width,
+			x = wa.x,
+			y = wa.y,
+			height = wa.height,
+			width = wa.width,
 		},
 		layout_clients = {focused} ,
 		orientation = orientation,
-		parent = focused.parent
+		parent = p
 	}
 
-	parent.layout_clients[_get_idx(focused, parent.layout_clients)] = new_parent
+	p.layout_clients[_get_idx(focused, p.layout_clients)] = new_parent
 	focused.parent = new_parent
 	--arrange(_get_tag(parent))
 end
@@ -428,10 +427,16 @@ capi.tag.connect_signal("property::column_count", function() log("column_count")
 capi.tag.connect_signal("property::layout", arrange)
 capi.tag.connect_signal("property::windowfact", function() log("windowfact")end)
 capi.tag.connect_signal("property::selected", arrange)
---capi.tag.connect_signal("property::activated", arrange)
+capi.tag.connect_signal("property::activated", arrange)
 capi.tag.connect_signal("property::useless_gap", function() log("useless_gap")end)
 capi.tag.connect_signal("property::master_fill_policy", function() log("master_fill_policy")end)
-capi.tag.connect_signal("tagged",  function(t, c) add_client(c, nil, t)end)
+capi.tag.connect_signal("tagged",
+	function(t, c)
+		log("Tagged")
+		add_client(c, nil, t)
+		arrange(_get_tag(c))
+	end)
+
 capi.tag.connect_signal("untagged",
 	function(t, c)
 		local old_t = _get_tag(c)
@@ -444,7 +449,12 @@ capi.tag.connect_signal("untagged",
 --capi.client.connect_signal("request::geometry", function(c, cont, ad)
 --note{text="Connect"}
 --end)
-capi.client.connect_signal("manage", function(c) arrange(_get_tag(c)) client.focus = c return end)
+capi.client.connect_signal("manage",
+	function(c)
+		log("Manage")
+		arrange(_get_tag(c))
+		client.focus = c
+	end)
 capi.client.connect_signal("unmanage", function(c) arrange(_get_tag(c)) return end)
 capi.screen.connect_signal("property::workarea", function() return end)
 --capi.screen.connect_signal("removed",
