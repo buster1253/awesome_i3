@@ -48,7 +48,6 @@ local function place_client(c)
 end
 
 local function arrange(p)
-	log("arrange")
 	if not p.layout_clients then return end
 
 	for i,c in ipairs(p.layout_clients) do
@@ -203,12 +202,14 @@ local function shared_border(p1,p2,c1,c2)
 end
 
 local function find_dir(dir)
-	local s = awful.screen.focused()
 	local c = client.focus
-	local clients = s.clients
+	if not c then
+		return
+	end
+	local clients = _get_tag(c):clients()
 
 	local x,y,w,h = c.workarea.x, c.workarea.y,
-	c.workarea.width, c.workarea.height
+	                c.workarea.width, c.workarea.height
 
 	local p1, p2, c1, c2
 	if dir == "E" or dir == "W" then
@@ -217,26 +218,21 @@ local function find_dir(dir)
 		p1, p2 = x, x+w
 	end
 
-	local e1, e2, d
+	local c1, c2, d
 	local best, shared, best_shared = nil, 0, 0
+	local _wa
 	for i,v in ipairs(clients) do
-		if dir == "W" then
-			d = (v.workarea.x + v.workarea.width) - x
+		_wa = v.workarea
+		if dir == "W" or dir == "E" then
+			d = dir == "W" and (_wa.x + _wa.width) - x or _wa.x - (x + w)
 			c1 = v.workarea.y
 			c2 = c1 + v.workarea.height
-		elseif dir == "E" then
-			d = v.workarea.x - (x + w)
-			c1 = v.workarea.y
-			c2 = c1 + v.workarea.height
-		elseif dir == "N" then
-			d = (v.workarea.y + v.workarea.height) - y
+		elseif dir == "N" or dir == "S" then
+			d = dir == "N" and (_wa.y + _wa.height) - y or _wa.y - (y + h)
 			c1 = v.workarea.x
-			c2 = c1 + v.workarea.height
-		elseif dir == "S" then
-			d = v.workarea.y - (y + h)
-			c1 = v.workarea.x
-			c2 = c1 + v.workarea.height
+			c2 = c1 + v.workarea.width
 		end
+
 		if -20 < d and d < 20 then
 			shared = c1 and c2 and shared_border(p1,p2,c1,c2) or 0
 			if shared > best_shared then
