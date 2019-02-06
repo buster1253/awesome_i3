@@ -2,7 +2,7 @@
 --------------------------------------------------------------------------------
 local gears = require("gears")
 local awful = require("awful")
-local wibox = require("wibox") -- Widget and layout library
+local wibox = require("wibox")
 local beautiful = require("beautiful") -- Theme handling library
 
 require("awful.autofocus")
@@ -17,6 +17,8 @@ require("awful.hotkeys_popup.keys")
 
 -- I3 tag handler
 local workspace = require "workspace"
+
+--local battery_widget = require "battery_widget"
 
 if awesome.startup_errors then
 	naughty.notify({ preset = naughty.config.presets.critical,
@@ -70,8 +72,12 @@ local function set_wallpaper(s)
 	end
 end
 
+
 -- Re-set wallpaper when a screen's geometry changes (e.g. different resolution)
 screen.connect_signal("property::geometry", set_wallpaper)
+
+local bat_wgt = require "bat_wgt".new("BAT0")
+local net_wgt = require "net_wgt".new("wlp61s0", 1)
 
 awful.screen.connect_for_each_screen(function(s)
 	-- Wallpaper
@@ -96,19 +102,19 @@ awful.screen.connect_for_each_screen(function(s)
 	s.mywibox:setup {
 		layout = wibox.layout.align.horizontal,
 		{ -- Left widgets
-		s.myworkspacename,
-		layout = wibox.layout.fixed.horizontal,
-		s.mytaglist,
-		s.mypromptbox,
-	},
-	s.mytasklist, -- Middle widget
-	{ -- Right widgets
-	layout = wibox.layout.fixed.horizontal,
-	--mykeyboardlayout,
-	wibox.widget.systray(),
-	textclock,
-	--s.mylayoutbox,
-},
+			layout = wibox.layout.fixed.horizontal,
+			s.myworkspacename,
+			s.mytaglist,
+			s.mypromptbox,
+		},
+		s.mytasklist, -- Middle widget
+		{ -- Right widgets
+			layout = wibox.layout.fixed.horizontal,
+			net_wgt,
+			bat_wgt,
+			textclock,
+			wibox.widget.systray(),
+		},
 	}
 end)
 

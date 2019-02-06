@@ -5,7 +5,6 @@ local capi = {
 }
 
 local tag = require "awful.tag"
---local client = require "awful.client"
 local je = require "cjson".encode
 local awful = require "awful"
 local nau = require "naughty"
@@ -69,14 +68,16 @@ local function _resize_parent(p, w, h, ignore)
 	local sy  = p.workarea.y
 	local wa  = p.workarea
 
-	local _wa
 	for i, c in ipairs(cls) do
-		_wa = c.workarea
+		local _wa = c.workarea
 		if i == ignore then
 			_wa.x = sx
 			_wa.y = sy
-			if p.orientation == "h" then sx = sx + _wa.width
-			else sy = sy + _wa.height end
+			if p.orientation == "h" then
+				sx = sx + _wa.width
+			else
+				sy = sy + _wa.height
+			end
 		else
 			_wa.width  = o == "h" and _wa.width + wd or wa.width
 			_wa.height = o == "h" and wa.height or _wa.height + hd
@@ -108,15 +109,14 @@ local function _resize_parent(p, w, h, ignore)
 end
 
 local function remove_client(c)
-	local p   = c.parent
-	local w   = c.workarea.width
-	local h   = c.workarea.height
-	local cls = p.layout_clients
+	local p    = c.parent
+	local w, h = c.workarea.width, c.workarea.height
+	local cls  = p.layout_clients
 
 	remove(cls, _get_idx(c, cls))
 
 	if #cls == 1 and p ~= _get_tag(p) then
-		c = p.layout_clients[1] -- the remaining client
+		c = p.layout_clients[1]
 		c.workarea = p.workarea
 		p.parent.layout_clients[_get_idx(p, p.parent.layout_clients)] = c
 		c.parent = p.parent
@@ -139,13 +139,10 @@ local function _add_client(c, p, pos)
 	local wa   = p.workarea
 	local clsc = (#cls > 0 and #cls or 0) + 1
 
-	local w      = wa.width
-	local h      = wa.height
-	local wd     = w / clsc
-	local hd     = h / clsc
-	local width  = w / clsc
-	local height = h / clsc
 	local o      = p.orientation
+	local w, h   = wa.width, wa.height
+	local wd, hd = w / clsc, h / clsc
+	local width, height  = w / clsc, h / clsc
 
 	c.workarea = {
 		x = wa.x,
@@ -155,7 +152,7 @@ local function _add_client(c, p, pos)
 	}
 
 	c.parent = p
-	pos = pos or clsc
+	pos      = pos or clsc
 	insert(cls, pos, c)
 
 	if p.orientation == "h" then
@@ -172,7 +169,7 @@ local function move_to_parent(c, np, pos)
 end
 
 local function add_client(c, f, t)
-	if c.type == "dialog" then
+	if c.type == "dialog" then -- popups
 		return
 	end
 
@@ -288,6 +285,21 @@ function _M.move_client(dir)
 		p_idx = _get_idx(p, p.parent.layout_clients)
 	end
 
+	--prevents empty parents
+	--fix so that client is moved aswell
+	if #p.layout_clients == 1 and p_idx then
+		p.parent.layout_clients[p_idx] = c
+		c.parent = p.parent
+
+		p = p.parent
+		if p.parent then
+			p_idx = _get_idx(p, p.parent.layout_clients)
+		else
+			p_idx = nil
+		end
+	end
+
+
 	if p.orientation == "h" then
 		if dir == "E" then
 			if c_idx < #cls then
@@ -392,41 +404,55 @@ function _M.split(orientation)
 	--arrange(_get_tag(parent))
 end
 
---TODO recurse children
 function _M.toggle_orientation()
-	local s = awful.screen.focused()
-	local focused = client.focus
-	local p = focused.parent
-	if p.orientation == "h" then
+	local c = client.focus
+	if not c then
+		return
+	end
+
+	local p = c.parent
+	local o = p.orientation
+
+	if o == "h" then
 		p.orientation = "v"
 		local h = p.workarea.height / #p.layout_clients
-		for i,c in ipairs(p.layout_clients) do
+		for i, c in ipairs(p.layout_clients) do
+			local wd = p.workarea.width - c.workarea.width
+			local hd = h - c.workarea.height
 			c.workarea = {
 				x = p.workarea.x,
 				y = p.workarea.y + (i-1) * h,
 				height = h,
 				width = p.workarea.width
 			}
+			if c.layout_clients and #c.layout_clients > 0 then
+				_resize_parent(c, wd, hd)
+			end
 		end
-	elseif p.orientation == "v" then
+
+	elseif o == "v" then
 		p.orientation = "h"
 		local w = p.workarea.width / #p.layout_clients
 		for i,c in ipairs(p.layout_clients) do
+			local wd = w - c.workarea.width
+			local hd = p.workarea.height - c.workarea.height
 			c.workarea = {
 				x = p.workarea.x + (i-1) * w,
 				y = p.workarea.y,
 				height = p.workarea.height,
 				width = w
 			}
+			if c.layout_clients and #c.layout_clients > 0 then
+				_resize_parent(c, wd, hd)
+			end
 		end
 	end
-	arrange(s)
+	arrange(_get_tag(p))
 end
 
+
 local function del_client(c)
-	log("del_client")
 	_M.remove_client(c)
-	--arrange(c.screen.selected_tag)
 end
 
 capi.tag.connect_signal("property::master_width_factor", function() log("master_width_factor")end)
@@ -438,9 +464,9 @@ capi.tag.connect_signal("property::windowfact", function() log("windowfact")end)
 capi.tag.connect_signal("property::activated", arrange)
 capi.tag.connect_signal("property::useless_gap", function() log("useless_gap")end)
 capi.tag.connect_signal("property::master_fill_policy", function() log("master_fill_policy")end)
+
 capi.tag.connect_signal("tagged",
 	function(t, c)
-		--log("Tagged")
 		add_client(c, nil, t)
 		log("TagName: ", t.name)
 		arrange(_get_tag(c))
@@ -477,9 +503,39 @@ capi.screen.connect_signal("property::workarea", function() return end)
 
 _M.arrange = arrange
 
+local function recurse_clients(t, p)
+	for _,c in ipairs(p.layout_clients) do
+		local cl = { workarea = c.workarea }
+		t[tostring(c.pid)] = cl
+		if c.layout_clients and #c.layout_clients > 0 then
+			cl.clients = {}
+			recurse_clients(cl.clients, c)
+		end
+	end
+end
+
+function _M.serialize()
+	local state = {}
+
+	for s in screen do
+		_s = {}
+		state[s.index] = _s
+
+		for _,t in ipairs(s.tags) do
+			_t = {}
+			_s[t.name] = _t
+
+			_t.clients = {}
+			recurse_clients(_t.clients, t)
+		end
+	end
+
+	print(require "cjson".encode(state))
+end
+
+--[[
 local function f(p)
 	-- workarea, layout_clients, orientation
-	log("DHWUAHD")
 	if not p.workarea then log("NO WA")
 	elseif not p.orientation then log("NO ORI")
 	elseif not p.layout_clients then log("NO clients") end
@@ -523,7 +579,7 @@ end
 
 local jd = require "cjson".decode
 local function r(client)
-	for _,c in ipairs(client.layout_clients) do 
+	for _,c in ipairs(client.layout_clients) do
 		if c.layout_clients and #c.layout_clients > 0 then
 			r(c)
 		else
@@ -533,11 +589,12 @@ local function r(client)
 	end
 end
 
+
 function _M.restore()
 	-- get table from file
 	local file = io.open("/tmp/layout_serial.lua", "r")
 	local t = jd(file:read("*a"))
-	local s = awful.screen.focused() 
+	local s = awful.screen.focused()
 	log("TABLE", je(t))
 	r(s)
 	--for i,c in ipairs(s.layout_clients) do
@@ -548,6 +605,7 @@ function _M.restore()
 	--end
 end
 
+--]]
 _M.remove_client = remove_client
 _M.move_to_parent = move_to_parent
 --_M.restore()

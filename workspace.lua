@@ -123,8 +123,8 @@ function _M:view_tag(i)
 	tag.index = get_position(tag.name, tags, c_screen.index)
 	tag:view_only()
 	--client.focus = tag.focused
-	if n_screen.index == c_screen.index 
-		and self:count_tags(c_screen.index) > 1 
+	if n_screen.index == c_screen.index
+		and self:count_tags(c_screen.index) > 1
 		and #c_tag:clients() < 1 then
 		c_tag.activated = false
 	end
@@ -134,7 +134,7 @@ function _M:move_client_to_tag(i)
 	if client.focus then
 		local tags = self.workspaces[self.current]
 		local tag  = tags[i]
-		local c	   = client.focus
+		local c    = client.focus
 		local c_screen = awful.screen.focused()
 		local c_tag = c_screen.selected_tag
 
