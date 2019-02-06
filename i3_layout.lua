@@ -501,6 +501,7 @@ capi.screen.connect_signal("property::workarea", function() return end)
 --end)
 
 
+
 _M.arrange = arrange
 
 local function recurse_clients(t, p)

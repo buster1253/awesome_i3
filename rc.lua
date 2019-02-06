@@ -75,9 +75,17 @@ end
 
 -- Re-set wallpaper when a screen's geometry changes (e.g. different resolution)
 screen.connect_signal("property::geometry", set_wallpaper)
+tag.connect_signal("request::screen", function(t)
+	--log("please give me screen" .. t.name)
+	print("==============================================")
+	print("please give me screen" .. t.name)
+	print("primary: ", screen.primary.index)
+	print("==============================================")
+	workspace:move_tag_to_screen(t, screen.primary)
+end)
 
-local bat_wgt = require "bat_wgt".new("BAT0")
-local net_wgt = require "net_wgt".new("wlp61s0", 1)
+local bat_wgt = require "widgets/bat_wgt".new("BAT0")
+local net_wgt = require "widgets/net_wgt".new("wlp61s0", 1)
 
 awful.screen.connect_for_each_screen(function(s)
 	-- Wallpaper

@@ -168,4 +168,10 @@ function _M:count_tags(screen_id)
 	return c
 end
 
+function _M:move_tag_to_screen(t, s)
+	t.screen = s
+	s.selected_tag:view_only()
+end
+
+
 return _M.init()
