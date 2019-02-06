@@ -94,25 +94,22 @@ awful.screen.connect_for_each_screen(function(s)
 	-- Create a promptbox for each screen
 	s.mypromptbox = awful.widget.prompt()
 	-- taglist widget
-	s.mytaglist = awful.widget.taglist(s, awful.widget.taglist.filter.all,
+	s.taglist = awful.widget.taglist(s, awful.widget.taglist.filter.all,
 	taglist_buttons)
 
 	-- display current workspace
-	s.myworkspacename = wibox.widget{
-		markup = "",
-		widget = wibox.widget.textbox
-	}
+	s.wsname = wibox.widget.textbox("")
 
 	-- Create the wibox
-	s.mywibox = awful.wibar({ position = "top", screen = s })
+	s.wibar = awful.wibar({ position = "top", screen = s })
 
 	-- Add widgets to the wibox
-	s.mywibox:setup {
+	s.wibar:setup {
 		layout = wibox.layout.align.horizontal,
 		{ -- Left widgets
 			layout = wibox.layout.fixed.horizontal,
-			s.myworkspacename,
-			s.mytaglist,
+			s.wsname,
+			s.taglist,
 			s.mypromptbox,
 		},
 		s.mytasklist, -- Middle widget

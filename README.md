@@ -1,30 +1,34 @@
 # Features
 
 - workspaces
-- layout
+- i3_layout
 
 ## Requirements
 - lua_cjson
 
-## Install
+## Usage
+
 ```lua
--- require the module
-local workspaces = require "workspaces"
+local workspace = require "workspaces"
+```
 
--- add a textbox to each screen in screen "connect"
-s.myworkspacename = wibox.widget{
-	markup = "",
-	widget = wibox.widget.textbox
-}
--- add it somewhere ref. mod + x
+To have the current workspace name displayed on the screen add a textbox widget
+to the screens named `wsname`.
 
--- after screen "connect" signal
-workspaces.init()
+```lua
+s.wsname = wibox.widget.textbox("")
+```
+
+finally after the screen.connect_for_each_screen initialize to the default ws
+by swapping to it
+
+```lua
+workspace:swap_ws(1) -- default/initial workspace
 ```
 
 ## Change workspace:
-```lua
 
+```lua
 awful.prompt.run {
 	prompt       = '<b>Workspace: </b>',
 	text         = '',
@@ -47,6 +51,7 @@ view_tag(i)| Goto or create tag i
 move_client_to_tag(i)| Moves focused client to tag i
 
 # TODO
-- Better neighbour detection
+
+- Write actual documentation
 - Global tag: shared between all workspaces
 - serializing: keep setup post reload

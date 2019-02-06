@@ -73,7 +73,9 @@ function _M:swap_ws(name)
 	local next_ws = self.workspaces[name] or self:new_ws(name)
 
 	for s in screen do
-		s.myworkspacename:set_markup_silently(tostring(name))
+		if s.wsname then
+			s.wsname:set_markup_silently(tostring(name))
+		end
 	end
 
 	local active_ws = self.workspaces[self.current]
