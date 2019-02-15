@@ -2,7 +2,7 @@ local gears = require "gears"
 local wibox = require "wibox"
 
 local format = string.format
-local sizes = {"", "k", "m", "g"}
+local sizes = {"B", "K", "M", "G"}
 
 local _M = {}
 
@@ -49,7 +49,7 @@ function _M.new(dev, rate)
 					down = down / 1000
 				end
 
-				self.tb.text = format("%.0f %sB/s", down, sizes[size])
+				self.tb.text = format("%.0f %s/s", down, sizes[size])
 			end
 		},
 	}, {})

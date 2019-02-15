@@ -2,11 +2,11 @@ local awful         = require "awful"
 local gears         = require "gears"
 local workspace     = require "workspace"
 local hotkeys_popup = require("awful.hotkeys_popup").widget
-local layout = require "i3_layout"
+local layout        = require "i3_layout"
 
 -- TODO move this to another module
 local def = "dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify"
-.." /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player."
+			.." /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player."
 local spotify = {
 	toggle = function()
 		os.execute(def.."PlayPause")
@@ -112,6 +112,10 @@ function()
 	}
 end,
 	{description = "lua execute prompt", group = "awesome"})
+--awful.key({ modkey }, "#72", function()
+		--awful.util.spawn("xbacklight -inc 5")
+	--end,
+	--{description = "lua execute prompt", group = "awesome"})
 )
 
 -- Swap tags

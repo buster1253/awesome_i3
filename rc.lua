@@ -16,9 +16,13 @@ local hotkeys_popup = require("awful.hotkeys_popup").widget
 require("awful.hotkeys_popup.keys")
 
 -- I3 tag handler
-local workspace = require "workspace"
+workspace = require "workspace"
+layout = require "i3_layout"
+local thunderbolt_uuid = "00ac5a88-b5d6-0801-ffff-ffffffffffff\n"
 
---local battery_widget = require "battery_widget"
+function log(...)
+	io.stderr:write("\n" .. ... .. "\n")
+end
 
 if awesome.startup_errors then
 	naughty.notify({ preset = naughty.config.presets.critical,
@@ -75,17 +79,56 @@ end
 
 -- Re-set wallpaper when a screen's geometry changes (e.g. different resolution)
 screen.connect_signal("property::geometry", set_wallpaper)
+
 tag.connect_signal("request::screen", function(t)
-	--log("please give me screen" .. t.name)
-	print("==============================================")
-	print("please give me screen" .. t.name)
-	print("primary: ", screen.primary.index)
-	print("==============================================")
+	io.stderr:write("please give me screen" .. t.name)
 	workspace:move_tag_to_screen(t, screen.primary)
+end)
+
+awesome.connect_signal("screen::change", function(output, state)
+	local uuid = io.popen('boltctl list | grep uuid | '
+		.. 'tr -s " " | cut -d " " -f 4'):read("*a")
+
+	if thunderbolt_uuid and uuid and state == "Connected" then
+		if uuid == thunderbolt_uuid then
+			awful.spawn.easy_async_with_shell("xrandr --output " .. output .. " --auto --mode 1920x1080 --above eDP-1", function()end)
+		else
+			log("uuid missmatch")
+		end
+	else
+		log("no uuid")
+	end
+
+	if state == "Disconnected" then
+		log("disconnected")
+		awful.spawn.easy_async_with_shell("xrandr --output " .. output .. " --off", function()end)
+	end
+end)
+
+awful.screen.disconnect_for_each_screen(function(s)
+	io.stderr:write("==============================================")
+	io.stderr:write("primary: ", screen.primary.index)
+	io.stderr:write("current: ", s.index)
+	io.stderr:write("==============================================")
+	--workspace:remove_screen(s)
+	for _,t in pairs(s.selected_tags) do
+		workspace:move_tag_to_screen(t, s.primary)
+	end
+end)
+
+screen.connect_signal("property::workarea", function(s)
+	log("\nscreen::property::workarea\n")
+	local wa = s.workarea
+	for _,t in pairs(s.tags) do
+		t.workarea = {x = wa.x, y = wa.y, height = wa.height, width = wa.width}
+		layout.resize_parent(t, 0,0)
+	end
 end)
 
 local bat_wgt = require "widgets/bat_wgt".new("BAT0")
 local net_wgt = require "widgets/net_wgt".new("wlp61s0", 1)
+
+workspace:swap_ws(1) -- default workspace
 
 awful.screen.connect_for_each_screen(function(s)
 	-- Wallpaper
@@ -121,9 +164,10 @@ awful.screen.connect_for_each_screen(function(s)
 			wibox.widget.systray(),
 		},
 	}
+	workspace:new_screen(s)
 end)
 
-workspace:swap_ws(1) -- default workspace
+--workspace:swap_ws(1) -- default workspace
 
 require "keybindings"
 
@@ -197,6 +241,10 @@ client.connect_signal("manage", function (c)
 	-- Set the windows at the slave,
 	-- i.e. put it at the end of others instead of setting it master.
 	-- if not awesome.startup then awful.client.setslave(c) end
+
+	io.stderr:write("==================================")
+	io.stderr:write("MANAGE")
+	io.stderr:write("==================================")
 
 	if awesome.startup and
 		not c.size_hints.user_position

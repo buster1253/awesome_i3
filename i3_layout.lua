@@ -5,18 +5,20 @@ local capi = {
 }
 
 local tag = require "awful.tag"
-local je = require "cjson".encode
+local cjson = require "cjson"
+local je, jd = cjson.encode, cjson.decode
 local awful = require "awful"
 local nau = require "naughty"
 local note = nau.notify
 local insert = table.insert
 local remove = table.remove
+--local workspace = require "workspace"
 
 
 local function log(hdr, ...)
-	print("\n=============", hdr, "============")
-	print(...)
-	print("================================\n")
+	io.stderr:write("\n=============", hdr, "============")
+	io.stderr:write(...)
+	io.stderr:write("================================\n")
 end
 
 local _M = {
@@ -41,7 +43,7 @@ end
 
 -----------------------------------------
 local function place_client(c)
-	log("WA", "x: ", c.workarea.x, "y: ", c.workarea.y, "width: ", c.workarea.width, "height: ", c.workarea.height)
+	log("WA: " .. (c.name or "unknown"), "x: ", c.workarea.x, "y: ", c.workarea.y, "width: ", c.workarea.width, "height: ", c.workarea.height)
 	if not c.geometry then log("no geometry") return end
 	c:geometry(c.workarea)
 end
@@ -58,8 +60,9 @@ local function arrange(p)
 	end
 end
 
-local function _resize_parent(p, w, h, ignore)
+local function resize_parent(p, w, h, ignore)
 	local cls = p.layout_clients
+	if not cls then return end
 	local o   = p.orientation
 	local div = ignore and (#cls - 1) or #cls
 	local wd  = w / div
@@ -87,7 +90,7 @@ local function _resize_parent(p, w, h, ignore)
 			sy = o == "h" and sy or sy + _wa.height
 
 			if c.layout_clients and #c.layout_clients > 0 then
-				_resize_parent(c, o == "h" and wd or 0, o == "h" and 0 or hd)
+				resize_parent(c, o == "h" and wd or 0, o == "h" and 0 or hd)
 			end
 		end
 	end
@@ -121,7 +124,7 @@ local function remove_client(c)
 		p.parent.layout_clients[_get_idx(p, p.parent.layout_clients)] = c
 		c.parent = p.parent
 	else
-		_resize_parent(p, w, h)
+		resize_parent(p, w, h)
 	end
 end
 
@@ -156,9 +159,9 @@ local function _add_client(c, p, pos)
 	insert(cls, pos, c)
 
 	if p.orientation == "h" then
-		_resize_parent(p, -1*wd, 0, pos)
+		resize_parent(p, -1*wd, 0, pos)
 	elseif p.orientation == "v" then
-		_resize_parent(p, 0, -1*hd, pos)
+		resize_parent(p, 0, -1*hd, pos)
 	end
 end
 
@@ -316,7 +319,6 @@ function _M.move_client(dir)
 			end
 
 		elseif dir == "W" then
-			log("moving west")
 			if c_idx > 1 then
 				local n = cls[c_idx - 1]
 				if n.layout_clients then
@@ -325,8 +327,9 @@ function _M.move_client(dir)
 					swap_clients(c, n, cls)
 				end
 			elseif p.parent then
-				log("moving to parent")
 				move_to_parent(c, p.parent, p_idx)
+			else
+				log("unhandeled move")
 			end
 		elseif dir == "S" and p_idx then
 			move_to_parent(c, p.parent, p_idx + 1)
@@ -345,6 +348,8 @@ function _M.move_client(dir)
 				end
 			elseif p.parent then
 				move_to_parent(c, p.parent, p_idx + 1)
+			else
+				log("unhandeled move")
 			end
 
 		elseif dir == "N" then
@@ -357,12 +362,13 @@ function _M.move_client(dir)
 				end
 			elseif p.parent then
 				move_to_parent(c, p.parent, p_idx)
+			else
+				log("unhandeled move")
 			end
 
 		elseif dir == "E" and p_idx then
 			move_to_parent(c, p.parent, p_idx + 1)
 		elseif dir == "W" and p_idx then
-			log("moving to parent. idx: ", p_idx)
 			move_to_parent(c, p.parent, p_idx)
 		end
 
@@ -374,7 +380,7 @@ end
 
 function _M.split(orientation)
 	if orientation ~= "v" and orientation ~= "h" then
-		print("Layout.split invalid orientation " .. orientation)
+		io.stderr:write("Layout.split invalid orientation " .. orientation)
 	end
 
 	local focused = client.focus
@@ -426,7 +432,7 @@ function _M.toggle_orientation()
 				width = p.workarea.width
 			}
 			if c.layout_clients and #c.layout_clients > 0 then
-				_resize_parent(c, wd, hd)
+				resize_parent(c, wd, hd)
 			end
 		end
 
@@ -443,7 +449,7 @@ function _M.toggle_orientation()
 				width = w
 			}
 			if c.layout_clients and #c.layout_clients > 0 then
-				_resize_parent(c, wd, hd)
+				resize_parent(c, wd, hd)
 			end
 		end
 	end
@@ -465,25 +471,26 @@ capi.tag.connect_signal("property::activated", arrange)
 capi.tag.connect_signal("property::useless_gap", function() log("useless_gap")end)
 capi.tag.connect_signal("property::master_fill_policy", function() log("master_fill_policy")end)
 
+
 capi.tag.connect_signal("tagged",
 	function(t, c)
 		add_client(c, nil, t)
-		log("TagName: ", t.name)
 		arrange(_get_tag(c))
 	end)
 
 capi.tag.connect_signal("untagged",
 	function(t, c)
-		local old_t = _get_tag(c)
 		del_client(c)
-		arrange(old_t)
+		arrange(_get_tag(c))
 	end)
---capi.tag.connect_signal("tagged",  new_client)
---capi.tag.connect_signal("untagged", del_client)
 
---capi.client.connect_signal("request::geometry", function(c, cont, ad)
---note{text="Connect"}
---end)
+capi.client.connect_signal("request::geometry", function(c, cont, ad)
+	log("Client: " .. (c.name or "unknown") .. "request::geometry")
+	if cont ~= "fullscreen" then
+		arrange(_get_tag(c)) -- use this instead of tagged
+	end
+end)
+
 capi.client.connect_signal("manage",
 	function(c)
 		log("Manage")
@@ -492,17 +499,30 @@ capi.client.connect_signal("manage",
 	end)
 capi.client.connect_signal("unmanage", function(c) arrange(_get_tag(c)) return end)
 capi.screen.connect_signal("property::workarea", function() return end)
---capi.screen.connect_signal("removed",
---function(s)
---for i,t in ipairs(s.tags) do
---t.screen = screen.primary
---t.workarea = t.screen.workarea
---end
---end)
+capi.screen.connect_signal("removed",
+	function(s)
+		for i,t in ipairs(s.tags) do
+			log("Removing " .. t.name)
+			--t.screen = screen.primary
+			--t.workarea = t.screen.workarea
+		end
+	end)
 
 
 
 _M.arrange = arrange
+
+--local layout = require "i3_layout"
+
+awesome.connect_signal("exit",
+	function()
+		_M.serialize()
+	end)
+
+awesome.connect_signal("startup",
+	function()
+		_M.restore()
+	end)
 
 local function recurse_clients(t, p)
 	for _,c in ipairs(p.layout_clients) do
@@ -516,6 +536,9 @@ local function recurse_clients(t, p)
 end
 
 function _M.serialize()
+	log("serializing")
+	log("serializing")
+	log(je(screen.primary.workarea))
 	local state = {}
 
 	for s in screen do
@@ -526,13 +549,75 @@ function _M.serialize()
 			_t = {}
 			_s[t.name] = _t
 
-			_t.clients = {}
-			recurse_clients(_t.clients, t)
+			if t.layout_clients and #t.layout_clients > 0 then
+				_t.clients = {}
+				recurse_clients(_t.clients, t)
+			end
 		end
 	end
 
-	print(require "cjson".encode(state))
+
+	local f = io.open("/tmp/awesome_serial.lua", "w+")
+	f:write(je(state))
+	f:close()
 end
+
+local function restore_recurse(p, t)
+	for i, c in pairs(p.layout_clients) do
+		add_client(c, p, t)
+		local cls = c.layout_clients
+		if cls and #cls > 0 then
+			restore_recurse(c, t)
+		end
+	end
+end
+
+function _M.restore()
+	local f = io.open("/tmp/awesome_serial.lua", "r")
+	local state = jd(f:read("*a"))
+	f:close()
+
+	local screens, clients = {}, {}
+	for i,c in ipairs(client.get()) do
+		io.stderr:write("pid " .. i ..  ": " .. c.pid)
+		if not c then io.stderr:write("Nope")end
+		clients[c.pid] = c
+	end
+	for s in screen do
+		screens[s.index] = s -- Assumes the indexes are equal
+	end
+
+
+	for i,s in ipairs(state) do
+		local _s = screens[i]
+		io.stderr:write("\n Screen: ", _s.index)
+		awful.screen.focus(_s.index)
+		for tname, t in pairs(s) do
+			--local _t = awful.tag.find_by_name(s, tname) or
+				--awful.tag.add(tname, {screen=_s, layout=_M})
+			io.stderr:write("\n tag: " .. tname)
+			io.stderr:write(je(t))
+			workspace:view_tag(tname)
+			restore_recurse(t, t)
+			--for pid,_ in pairs(t.clients or {}) do
+				--io.stderr:write("pid: " .. pid)
+				--local c = clients[pid]
+				--for k,v in pairs(clients) do
+					--io.stderr:write(k)
+				--end
+				--if not c then
+					--io.stderr:write("nope")
+				--end
+				--workspace:move_client_to_tag(tname, c)
+				----c:move_to_tag(_t)
+				----set workspace
+			--end
+		end
+	end
+end
+
+
+
 
 --[[
 local function f(p)
@@ -607,7 +692,8 @@ function _M.restore()
 end
 
 --]]
-_M.remove_client = remove_client
+_M.remove_client  = remove_client
+_M.resize_parent  = resize_parent
 _M.move_to_parent = move_to_parent
 --_M.restore()
 

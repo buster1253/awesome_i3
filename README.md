@@ -42,7 +42,7 @@ awful.prompt.run {
 ```
 
 
-# Usage
+# Commands
 
 command | description
 --------|------------
@@ -50,8 +50,27 @@ list_ws()| displays current workspaces using naughtify
 view_tag(i)| Goto or create tag i
 move_client_to_tag(i)| Moves focused client to tag i
 
+
+# Thunderbolt dock
+
+requirements: [bolt](https://github.com/gicmo/bolt)
+
+in rc.lua add:
+
+```lua
+thunderbolt = {
+	uuid = {
+		output = {
+			mode = "1920x1080",
+			pos = "0x0"
+		}
+	}
+}
+```
+
 # TODO
 
 - Write actual documentation
 - Global tag: shared between all workspaces
 - serializing: keep setup post reload
+	- make serialization work for clients without a pid
