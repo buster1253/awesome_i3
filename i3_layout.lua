@@ -254,9 +254,13 @@ local function find_dir(dir)
 end
 
 function _M.move_focus(dir)
-	local c = find_dir(dir)
-	if c then client.focus = c
-	else log("no client") end
+	local c = client.focus
+
+	if c and c.fullscreen then
+		awful.screen.focus_bydirection(dir, _get_tag(c).screen)
+	else
+		client.focus = find_dir(dir) or client.focus
+	end
 end
 
 local function swap_clients(c1, c2, arr)

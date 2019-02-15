@@ -5,6 +5,7 @@
 
 ## Requirements
 - lua_cjson
+- [bolt](https://github.com/gicmo/bolt) (Optional) for thunderbolt presets
 
 ## Usage
 
